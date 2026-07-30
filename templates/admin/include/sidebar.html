@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EzMart Sidebar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <style>
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            background: #8faae3;
+            border-radius: 20px;
+            padding: 25px 20px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 35px;
+        }
+
+        .logo i {
+            font-size: 30px;
+            color: #ff8500;
+        }
+
+        /* Phone submenu */
+
+        .submenu {
+            list-style: none;
+            padding-left: 25px;
+            margin-top: 5px;
+        }
+
+        .submenu a {
+            color: #e5e7eb;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+
+        .submenu a:hover {
+            background: #2563eb;
+            color: white;
+        }
+
+        .logo h3 {
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .menu {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .menu a {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-decoration: none;
+            color: #ffffff;
+            padding: 14px 18px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            transition: .3s;
+            font-size: 17px;
+        }
+
+        .menu a i {
+            width: 22px;
+        }
+
+        .menu a:hover {
+            background: #f5f5f5;
+            color: #111;
+        }
+
+        .menu .active {
+            background: #ff8500;
+            color: #fff;
+        }
+
+        .menu .active i {
+            color: #fff;
+        }
+
+        .menu hr {
+            margin: 18px 0;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <!-- Logo -->
+    <div class="logo">
+        <i class="fa-solid fa-store"></i>
+        <h3>Mark_Store</h3>
+    </div>
+    <div class="menu">
+        <!-- Dashboard -->
+        <a href="{{ url_for('admin_dashboard') }}"
+           class="{{ 'active' if module == 'admin' else '' }}">
+            <i class="fa-solid fa-house"></i>
+            Dashboard
+        </a>
+        <!-- Phones -->
+        {#<div class="nav-item">#}
+        {#    <a class="nav-link d-flex justify-content-between align-items-center"#}
+        {#       data-bs-toggle="collapse"#}
+        {#       href="#phoneMenu"#}
+        {#       role="button">#}
+        {#        <span>#}
+        {#            <i class="fa-solid fa-mobile-screen-button white"></i>#}
+        {#            Phones#}
+        {#        </span>#}
+        {#        <i class="fa-solid fa-chevron-down"></i>#}
+        {#    </a>#}
+        {#    <div class="collapse {% if module in ['all','add','brand'] %}show{% endif %}"#}
+        {#         id="phoneMenu">#}
+        {#        <a href="{{ url_for('admin_Phone_all') }}"#}
+        {#           class="ms-4 {{ 'active' if module=='all' else '' }}">#}
+        {#            All Phones#}
+        {#        </a>#}
+        {#        <a href="{{ url_for('admin_Phone_Add') }}"#}
+        {#           class="ms-4 {{ 'active' if module=='Add' else '' }}">#}
+        {#            Add Phone#}
+        {#        </a>#}
+        {#        <a href="{{ url_for('admin_Phone_brand') }}"#}
+        {#           class="ms-4 {{ 'active' if module=='brand' else '' }}">#}
+        {#            Brands#}
+        {#        </a>#}
+        {#    </div>#}
+        {#</div>#}
+        <!-- Products -->
+        <a href="{{ url_for('admin_product') }}"
+           class="{{ 'active' if module == 'products' else '' }}">
+            <i class="fa-solid fa-box"></i>
+            Product
+        </a>
+
+        <!-- Orders -->
+        <a href="{{ url_for('admin_orders') }}"
+           class="{{ 'active' if module == 'orders' else '' }}">
+            <i class="fa-solid fa-cart-shopping"></i>
+            Orders
+        </a>
+
+        <!-- Users -->
+        <a href="{{ url_for('admin_users') }}"
+           class="{{ 'active' if module == 'users' else '' }}">
+            <i class="fa-solid fa-users"></i>
+            Users
+        </a>
+
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

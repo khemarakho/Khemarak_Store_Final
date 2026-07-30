@@ -1,0 +1,228 @@
+/* ===========================
+   Google Font
+=========================== */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+body{
+    background:#efe2d4;
+    color:#333;
+    overflow-x:hidden;
+}
+
+/* ===========================
+   Sidebar
+=========================== */
+.sidebar{
+    position:fixed;
+    top:0;
+    left:0;
+    width:260px;
+    height:100vh;
+    background:#fff;
+    padding:25px 20px;
+    border-radius:0 20px 20px 0;
+    box-shadow:0 8px 25px rgba(0,0,0,.08);
+    overflow-y:auto;
+}
+
+/* ===========================
+   Main
+=========================== */
+.main{
+    margin-left:260px;
+    width:calc(100% - 260px);
+    min-height:100vh;
+    padding:25px;
+}
+
+/* ===========================
+   Navbar
+=========================== */
+.navbar{
+    position:sticky;
+    top:0;
+    z-index:1000;
+    background:#fff;
+    border-radius:15px;
+    padding:15px 25px;
+    box-shadow:0 5px 18px rgba(0,0,0,.08);
+    margin-bottom:25px;
+}
+
+.navbar img{
+    width:45px;
+    height:45px;
+    border-radius:50%;
+}
+
+.navbar i{
+    font-size:20px;
+    cursor:pointer;
+}
+
+/* ===========================
+   Logo
+=========================== */
+.logo{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:35px;
+}
+
+.logo i{
+    color:#ff8500;
+    font-size:30px;
+}
+
+.logo h3{
+    color:#222;
+    font-weight:700;
+}
+
+/* ===========================
+   Menu
+=========================== */
+.menu{
+    display:flex;
+    flex-direction:column;
+}
+
+.menu a{
+    display:flex;
+    align-items:center;
+    gap:15px;
+    text-decoration:none;
+    color:#777;
+    padding:15px 18px;
+    margin-bottom:8px;
+    border-radius:12px;
+    transition:.3s;
+}
+
+.menu a i{
+    width:22px;
+}
+
+.menu a:hover{
+    background:#f5f5f5;
+    color:#222;
+}
+
+.menu a.active{
+    background:#ff8500;
+    color:#fff;
+}
+
+.menu hr{
+    margin:18px 0;
+    border:none;
+    border-top:1px solid #ececec;
+}
+
+/* ===========================
+   Card
+=========================== */
+.card{
+    border:none;
+    border-radius:15px;
+    box-shadow:0 5px 18px rgba(0,0,0,.08);
+    animation:fadeUp .6s;
+}
+
+/* ===========================
+   Table
+=========================== */
+.table{
+    margin-bottom:0;
+}
+
+.table thead th{
+    border:none;
+    font-weight:600;
+}
+
+.table tbody tr{
+    transition:.3s;
+}
+
+.table tbody tr:hover{
+    background:#f5f5f5;
+}
+
+/* ===========================
+   Buttons
+=========================== */
+.btn{
+    transition:.3s;
+}
+
+.btn:hover{
+    transform:scale(1.05);
+}
+
+/* ===========================
+   Footer
+=========================== */
+footer{
+    text-align:center;
+    padding:30px;
+    color:#666;
+}
+
+/* ===========================
+   Animation
+=========================== */
+@keyframes fadeUp{
+    from{
+        opacity:0;
+        transform:translateY(25px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
+/* ===========================
+   Responsive
+=========================== */
+@media (max-width:992px){
+
+    .sidebar{
+        left:-260px;
+        transition:.3s;
+    }
+
+    .sidebar.show{
+        left:0;
+    }
+
+    .main{
+        margin-left:0;
+        width:100%;
+    }
+}.menu a i{
+    width:22px;
+}
+
+.menu a:hover{
+    background:#f5f5f5;
+    color:#111;
+}
+
+.menu .active{
+    background:#ff8500;
+    color:#fff;
+}
+
+.menu .active i{
+    color:#fff;
+}

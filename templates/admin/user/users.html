@@ -1,0 +1,68 @@
+{% extends 'admin/master.html' %}
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Users</h2>
+        <a href="/admin/user/add" class="btn btn-primary">
+            <i class="fa fa-plus"></i>
+            Add User
+        </a>
+    </div>
+    <div class="card shadow">
+        <div class="card-body">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Image</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th width="150">Action</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>
+                        <img src="/static/image/img.png" class="rounded-circle" width="50px" height="50px">
+                    </td>
+                    <td>Messi</td>
+                    <td>Messi@gmail.com</td>
+                    <td><span class="badge bg-danger">Admin</span></td>
+                    <td>
+                        <a href="{{ url_for('admin_user_edit', id=1) }}"
+                           class="btn btn-warning btn-sm">
+                            <i class="fa fa-edit"></i>
+                        </a>
+
+                        <a href="{{ url_for('admin_user_delete', id=1) }}"
+                           class="btn btn-danger btn-sm">
+                            <i class="fa fa-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>
+                        <img src="/static/image/img_1.png" class="rounded-circle" width="50px" height="50px">
+                    </td>
+                    <td>Ronaldo</td>
+                    <td>Ronaldo@example.com</td>
+                    <td><span class="badge bg-primary">Customer</span></td>
+                    <td>
+                        <a href="{{ url_for('admin_user_edit', id=2) }}"
+                           class="btn btn-warning btn-sm">
+                            <i class="fa fa-edit"></i>
+                        </a>
+
+                        <a href="{{ url_for('admin_user_delete', id=2) }}"
+                           class="btn btn-danger btn-sm">
+                            <i class="fa fa-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

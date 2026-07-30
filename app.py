@@ -1,4 +1,7 @@
 import email
+from enum import unique
+from sys import modules
+from flask import render_template, redirect, url_for
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from functools import wraps
 from datetime import datetime
@@ -6,21 +9,22 @@ from datetime import datetime
 from datetime import datetime
 import uuid
 import requests
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+
 BOT_TOKEN = "8294946961:AAFfr6tWQk_dLcdCyw_G7kAQUsdyCpQyywE"
 
 # IMPORTANT:
 # Replace with your REAL group ID
 CHAT_ID = "-1003720172728"
+
 def send_telegram_message(message):
-
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-
     payload = {
-        "chat_id":-1003720172728,
+        "chat_id": -1003720172728,
         "text": message,
         "parse_mode": "HTML"
     }
-
     try:
 
         response = requests.post(
@@ -39,11 +43,8 @@ def send_telegram_message(message):
 
         return None
 def send_product_photo(image_url, caption):
-
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
-
     try:
-
         response = requests.post(
             url,
             data={
@@ -52,19 +53,27 @@ def send_product_photo(image_url, caption):
                 "caption": caption
             }
         )
-
         print("Photo Response:")
         print(response.text)
-
         return response.json()
-
     except Exception as e:
-
         print("Photo Error:", e)
-
         return None
+
 app = Flask(__name__)
 app.secret_key = 'mobile_shop_secret_key_2024'
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80),unique=True, nullable=False)
+    email = db.Column(db.String(120), nullable=False, unique=True)
+    password = db.Column(db.String(80), nullable=False)
+    profile= db.Column(db.String(128), nullable=False)
 
 # Update the USERS dictionary to include order history
 USERS = {
@@ -793,13 +802,18 @@ PRODUCTS = [
     }
 ]
 
+
 def get_cart():
     if 'cart' not in session:
         session['cart'] = []
     return session['cart']
+
+
 def save_cart(cart):
     session['cart'] = cart
     session.modified = True
+
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -809,6 +823,8 @@ def login_required(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
+
 @app.context_processor
 def utility_processor():
     def cart_count():
@@ -826,6 +842,7 @@ def utility_processor():
 
     return dict(cart_count=cart_count, is_logged_in=is_logged_in, current_user=current_user, get_brands=get_brands)
 
+
 @app.route('/')
 @app.route('/index')
 def index():
@@ -834,6 +851,7 @@ def index():
     brands = sorted(set(p['brand'] for p in PRODUCTS))
     return render_template('front/index.html', featured_products=featured_products, new_products=new_products,
                            all_products=PRODUCTS, brands=brands)
+
 
 @app.route('/shop')
 def shop():
@@ -871,9 +889,9 @@ def shop():
                            search_query=search,
                            selected_sort=sort)
 
+
 @app.route("/product/<int:product_id>")
 def product_detail(product_id):
-
     product = next(
         (p for p in PRODUCTS if p["id"] == product_id),
         None
@@ -885,15 +903,17 @@ def product_detail(product_id):
 
     # Related products
     related = [
-        p for p in PRODUCTS
-        if p["brand"] == product["brand"] and p["id"] != product_id
-    ][:4]
+                  p for p in PRODUCTS
+                  if p["brand"] == product["brand"] and p["id"] != product_id
+              ][:4]
 
     return render_template(
         "front/product-detail.html",
         product=product,
         related=related
     )
+
+
 @app.route('/add-to-cart', methods=['POST'])
 def add_to_cart():
     product_id = int(request.form.get('product_id'))
@@ -929,6 +949,7 @@ def add_to_cart():
     return jsonify({'success': True, 'cart_count': sum(i['quantity'] for i in cart),
                     'message': f'{product["name"]} added to cart'})
 
+
 @app.route('/cart')
 @login_required
 def cart():
@@ -939,10 +960,11 @@ def cart():
     total = subtotal + shipping + tax
 
     return render_template('front/cart.html', cart=cart, subtotal=subtotal, shipping=shipping, tax=tax, total=total)
+
+
 @app.route('/order-confirmation')
 @login_required
 def order_confirmation():
-
     order = session.get('last_order')
 
     if not order:
@@ -953,16 +975,13 @@ def order_confirmation():
         order=order
     )
 
+
 @app.route('/update-cart', methods=['POST'])
 def update_cart():
-
     data = request.get_json()
-
     cart = get_cart()
-
     action = data.get('action')
     index = int(data.get('index'))
-
     if 0 <= index < len(cart):
 
         if action == 'increase':
@@ -996,6 +1015,8 @@ def update_cart():
         'tax': tax,
         'total': total
     })
+
+
 @app.route('/checkout')
 @login_required
 def checkout():
@@ -1010,10 +1031,11 @@ def checkout():
     total = subtotal + shipping + tax
 
     return render_template('front/checkout.html', subtotal=subtotal, shipping=shipping, tax=tax, total=total)
+
+
 @app.route('/place-order', methods=['POST'])
 @login_required
 def place_order():
-
     try:
         fullname = request.form.get('fullname')
         email = request.form.get('email')
@@ -1128,10 +1150,11 @@ def place_order():
         return redirect(
             url_for('checkout')
         )
+
+
 @app.route('/my-orders')
 @login_required
 def my_orders():
-
     user_email = session.get('user', {}).get('email')
 
     if not user_email:
@@ -1166,6 +1189,8 @@ def my_orders():
         'front/my-orders.html',
         orders=orders
     )
+
+
 @app.route('/order/<order_id>')
 @login_required
 def order_detail(order_id):
@@ -1181,9 +1206,10 @@ def order_detail(order_id):
         return redirect(url_for('my_orders'))
 
     return render_template('front/order-detail.html', order=order)
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-
     if request.method == 'POST':
 
         email = request.form.get('email', '').strip().lower()
@@ -1192,7 +1218,6 @@ def login():
         user = USERS.get(email)
 
         if user and user['password'] == password:
-
             session['user'] = {
                 'email': user['email'],
                 'name': user['name']
@@ -1204,11 +1229,15 @@ def login():
         flash('Invalid email or password', 'error')
 
     return render_template('front/login.html')
+
+
 @app.route('/logout')
 def logout():
     session.pop('user', None)
     flash('You have been logged out', 'info')
     return redirect(url_for('index'))
+
+
 @app.route('/create-user', methods=['GET', 'POST'])
 def create_user():
     if request.method == 'POST':
@@ -1254,6 +1283,8 @@ def create_user():
         return redirect(url_for('index'))
 
     return render_template('front/create-user.html')
+
+
 @app.route('/forget-pw', methods=['GET', 'POST'])
 def forget_password():
     if request.method == 'POST':
@@ -1273,11 +1304,91 @@ def forget_password():
 
     return render_template('front/forget-pw.html')
 
+
 @app.route('/profile')
 @login_required
 def profile():
     user = session.get('user')
     user_data = USERS.get(user['email'], {})
     return render_template('front/profile.html', user=user_data)
+
+
+@app.route("/admin/dashboard")
+def admin_dashboard():
+    module = "admin"
+    return render_template("admin/dashboard/admin.html", module="admin")
+
+
+@app.route("/admin/product")
+def admin_product():
+    module = "products"
+    return render_template("admin/product/products.html", module="products")
+
+
+@app.route("/admin/Phone")
+def admin_Phone():
+    module = "Phone"
+    return render_template("admin/category/index.html", module="Phone")
+
+
+@app.route("/admin/Phone/all")
+def admin_Phone_all():
+    return render_template("admin/Phone/all.html", module="all")
+
+
+@app.route("/admin/Phone/Add")
+def admin_Phone_Add():
+    return render_template("admin/Phone/Add.html", module="add")
+
+
+@app.route("/admin/Phone/brand")
+def admin_Phone_brand():
+    return render_template("admin/Phone/brand.html", module="brand")
+
+
+@app.route("/admin/orders")
+def admin_orders():
+    module = "orders"
+    return render_template("admin/order/orders.html", module="orders")
+
+
+@app.route("/admin/users")
+def admin_user():
+    return render_template("admin/user/users.html",module="users")
+
+
+@app.route("/admin/users")
+def admin_users():
+    module = "users"
+    return render_template("admin/user/users.html", module="users")
+
+
+@app.route("/admin/user/add")
+def admin_user_add():
+    return render_template("admin/user/add.html")
+
+
+@app.route("/admin/user/edit/<int:id>")
+def admin_user_edit(id):
+    return render_template(
+        "admin/user/edit.html",
+        module="edit",
+        user_id=id
+    )
+
+
+@app.route("/admin/user/delete/<int:id>", methods=["GET", "POST"])
+def admin_user_delete(id):
+    if request.method == "POST":
+        # delete user
+        return redirect(url_for("admin_users"))
+
+    return render_template(
+        "admin/user/delete.html",
+        module="admin",
+        user_id=id
+    )
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

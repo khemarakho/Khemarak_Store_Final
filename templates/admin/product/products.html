@@ -1,0 +1,45 @@
+{% extends 'admin/master.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Products</h2>
+    <a href="/admin/product/create" class="btn btn-primary">
+        <i class="fa fa-plus"></i>
+        Add Product
+    </a>
+</div>
+<div class="card shadow">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Image</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>1</td>
+                <td>
+                    <img src="https://i.pinimg.com/1200x/05/5a/29/055a294e8b96aab43b38c5ef762d0555.jpg" class="rounded" height="65px" width="65px">
+                </td>
+                <td>iPhone 15 Pro Max</td>
+                <td>$1200</td>
+                <td>20</td>
+                <td>
+                    <button class="btn btn-warning btn-sm">
+                        <i class="fa fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
