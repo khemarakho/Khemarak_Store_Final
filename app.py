@@ -1,23 +1,17 @@
-import email
-from enum import unique
-from sys import modules
-from flask import render_template, redirect, url_for
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+import os
+from flask import send_from_directory
+from admin import admin_bp
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, current_app
 from functools import wraps
-from datetime import datetime
-# Add this near the top of app.py with other imports
 from datetime import datetime
 import uuid
 import requests
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+from extensions import db,migrate
+from config import config
+
 
 BOT_TOKEN = "8294946961:AAFfr6tWQk_dLcdCyw_G7kAQUsdyCpQyywE"
-
-# IMPORTANT:
-# Replace with your REAL group ID
 CHAT_ID = "-1003720172728"
-
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
@@ -59,23 +53,12 @@ def send_product_photo(image_url, caption):
     except Exception as e:
         print("Photo Error:", e)
         return None
-
 app = Flask(__name__)
-app.secret_key = 'mobile_shop_secret_key_2024'
-
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
-
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80),unique=True, nullable=False)
-    email = db.Column(db.String(120), nullable=False, unique=True)
-    password = db.Column(db.String(80), nullable=False)
-    profile= db.Column(db.String(128), nullable=False)
-
-# Update the USERS dictionary to include order history
+app.config.from_object(config)
+db.init_app(app)
+app.register_blueprint(admin_bp)
+with app.app_context():
+    db.create_all()
 USERS = {
     "admin@mobishop.com": {
         "email": "admin@mobishop.com",
@@ -801,48 +784,33 @@ PRODUCTS = [
         "stock": 78
     }
 ]
-
-
 def get_cart():
     if 'cart' not in session:
         session['cart'] = []
     return session['cart']
-
-
 def save_cart(cart):
     session['cart'] = cart
     session.modified = True
-
-
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user' not in session:
+        if 'users' not in session:
             flash('Please log in to access this page', 'warning')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
-
     return decorated_function
-
-
 @app.context_processor
 def utility_processor():
     def cart_count():
         cart = get_cart()
         return sum(item['quantity'] for item in cart)
-
     def is_logged_in():
-        return 'user' in session
-
+        return 'users' in session
     def current_user():
-        return session.get('user', {})
-
+        return session.get('users', {})
     def get_brands():
         return sorted(set(p['brand'] for p in PRODUCTS))
-
     return dict(cart_count=cart_count, is_logged_in=is_logged_in, current_user=current_user, get_brands=get_brands)
-
-
 @app.route('/')
 @app.route('/index')
 def index():
@@ -851,24 +819,19 @@ def index():
     brands = sorted(set(p['brand'] for p in PRODUCTS))
     return render_template('front/index.html', featured_products=featured_products, new_products=new_products,
                            all_products=PRODUCTS, brands=brands)
-
-
 @app.route('/shop')
 def shop():
     brand = request.args.get('brand', '')
     search = request.args.get('search', '')
     sort = request.args.get('sort', 'default')
-
     products = PRODUCTS.copy()
 
     # Filter by brand
     if brand:
         products = [p for p in products if p['brand'].lower() == brand.lower()]
-
     # Filter by search
     if search:
         products = [p for p in products if search.lower() in p['name'].lower() or search.lower() in p['brand'].lower()]
-
     # Sort products
     if sort == 'price_low':
         products.sort(key=lambda x: x['price'])
@@ -888,8 +851,6 @@ def shop():
                            selected_brand=brand,
                            search_query=search,
                            selected_sort=sort)
-
-
 @app.route("/product/<int:product_id>")
 def product_detail(product_id):
     product = next(
@@ -912,8 +873,6 @@ def product_detail(product_id):
         product=product,
         related=related
     )
-
-
 @app.route('/add-to-cart', methods=['POST'])
 def add_to_cart():
     product_id = int(request.form.get('product_id'))
@@ -948,8 +907,6 @@ def add_to_cart():
 
     return jsonify({'success': True, 'cart_count': sum(i['quantity'] for i in cart),
                     'message': f'{product["name"]} added to cart'})
-
-
 @app.route('/cart')
 @login_required
 def cart():
@@ -960,8 +917,6 @@ def cart():
     total = subtotal + shipping + tax
 
     return render_template('front/cart.html', cart=cart, subtotal=subtotal, shipping=shipping, tax=tax, total=total)
-
-
 @app.route('/order-confirmation')
 @login_required
 def order_confirmation():
@@ -974,8 +929,6 @@ def order_confirmation():
         'front/order-confirmation.html',
         order=order
     )
-
-
 @app.route('/update-cart', methods=['POST'])
 def update_cart():
     data = request.get_json()
@@ -1016,7 +969,6 @@ def update_cart():
         'total': total
     })
 
-
 @app.route('/checkout')
 @login_required
 def checkout():
@@ -1031,7 +983,6 @@ def checkout():
     total = subtotal + shipping + tax
 
     return render_template('front/checkout.html', subtotal=subtotal, shipping=shipping, tax=tax, total=total)
-
 
 @app.route('/place-order', methods=['POST'])
 @login_required
@@ -1082,7 +1033,7 @@ def place_order():
             'status': 'Pending'
         }
 
-        user_email = session['user']['email']
+        user_email = session['users']['email']
         if 'orders' not in USERS[user_email]:
             USERS[user_email]['orders'] = []
         USERS[user_email]['orders'].append(order_data)
@@ -1151,11 +1102,10 @@ def place_order():
             url_for('checkout')
         )
 
-
 @app.route('/my-orders')
 @login_required
 def my_orders():
-    user_email = session.get('user', {}).get('email')
+    user_email = session.get('users', {}).get('email')
 
     if not user_email:
         return redirect(url_for('login'))
@@ -1190,11 +1140,10 @@ def my_orders():
         orders=orders
     )
 
-
 @app.route('/order/<order_id>')
 @login_required
 def order_detail(order_id):
-    user_email = session['user']['email']
+    user_email = session['users']['email']
     user_data = USERS.get(user_email, {})
     orders = user_data.get('orders', [])
 
@@ -1207,7 +1156,6 @@ def order_detail(order_id):
 
     return render_template('front/order-detail.html', order=order)
 
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -1218,7 +1166,7 @@ def login():
         user = USERS.get(email)
 
         if user and user['password'] == password:
-            session['user'] = {
+            session['users'] = {
                 'email': user['email'],
                 'name': user['name']
             }
@@ -1230,13 +1178,11 @@ def login():
 
     return render_template('front/login.html')
 
-
 @app.route('/logout')
 def logout():
-    session.pop('user', None)
+    session.pop('users', None)
     flash('You have been logged out', 'info')
     return redirect(url_for('index'))
-
 
 @app.route('/create-user', methods=['GET', 'POST'])
 def create_user():
@@ -1263,7 +1209,7 @@ def create_user():
             flash('Email already registered. Please login instead.', 'error')
             return render_template('front/create-user.html')
 
-        # Create new user
+        # Create new users
         from datetime import datetime
         USERS[email] = {
             'email': email,
@@ -1274,7 +1220,7 @@ def create_user():
         }
 
         # Auto-login after registration
-        session['user'] = {
+        session['users'] = {
             'email': email,
             'name': name
         }
@@ -1283,7 +1229,6 @@ def create_user():
         return redirect(url_for('index'))
 
     return render_template('front/create-user.html')
-
 
 @app.route('/forget-pw', methods=['GET', 'POST'])
 def forget_password():
@@ -1304,91 +1249,87 @@ def forget_password():
 
     return render_template('front/forget-pw.html')
 
-
 @app.route('/profile')
 @login_required
 def profile():
-    user = session.get('user')
+    user = session.get('users')
     user_data = USERS.get(user['email'], {})
     return render_template('front/profile.html', user=user_data)
-
-
-@app.route("/admin/dashboard")
-def admin_dashboard():
-    module = "admin"
-    return render_template("admin/dashboard/admin.html", module="admin")
-
-
 @app.route("/admin/product")
 def admin_product():
     module = "products"
     return render_template("admin/product/products.html", module="products")
-
 
 @app.route("/admin/Phone")
 def admin_Phone():
     module = "Phone"
     return render_template("admin/category/index.html", module="Phone")
 
-
 @app.route("/admin/Phone/all")
 def admin_Phone_all():
     return render_template("admin/Phone/all.html", module="all")
-
 
 @app.route("/admin/Phone/Add")
 def admin_Phone_Add():
     return render_template("admin/Phone/Add.html", module="add")
 
-
 @app.route("/admin/Phone/brand")
 def admin_Phone_brand():
     return render_template("admin/Phone/brand.html", module="brand")
-
 
 @app.route("/admin/orders")
 def admin_orders():
     module = "orders"
     return render_template("admin/order/orders.html", module="orders")
+# ==========================================
+# USER IMAGE
+# ==========================================
 
+@app.route("/uploads/users/<path:filename>")
+def user_image(filename):
 
-@app.route("/admin/users")
-def admin_user():
-    return render_template("admin/user/users.html",module="users")
+    # ==========================================
+    # USER UPLOAD FOLDER
+    # ==========================================
 
-
-@app.route("/admin/users")
-def admin_users():
-    module = "users"
-    return render_template("admin/user/users.html", module="users")
-
-
-@app.route("/admin/user/add")
-def admin_user_add():
-    return render_template("admin/user/add.html")
-
-
-@app.route("/admin/user/edit/<int:id>")
-def admin_user_edit(id):
-    return render_template(
-        "admin/user/edit.html",
-        module="edit",
-        user_id=id
+    user_folder = os.path.join(
+        app.root_path,
+        "uploads",
+        "users"
     )
 
+    # ==========================================
+    # CLEAN IMAGE PATH
+    # ==========================================
 
-@app.route("/admin/user/delete/<int:id>", methods=["GET", "POST"])
-def admin_user_delete(id):
-    if request.method == "POST":
-        # delete user
-        return redirect(url_for("admin_users"))
+    filename = filename.replace("\\", "/")
 
-    return render_template(
-        "admin/user/delete.html",
-        module="admin",
-        user_id=id
+    # If database contains:
+    # uploads/users/photo.jpg
+    if filename.startswith("uploads/users/"):
+
+        filename = filename[
+            len("uploads/users/") :
+        ]
+
+    # If database contains:
+    # users/photo.jpg
+    elif filename.startswith("users/"):
+
+        filename = filename[
+            len("users/") :
+        ]
+
+    # Get only filename
+    filename = os.path.basename(filename)
+
+    # ==========================================
+    # SEND IMAGE
+    # ==========================================
+
+    return send_from_directory(
+        user_folder,
+        filename
     )
-
-
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

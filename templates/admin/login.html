@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Admin Login</title>
+
+
+    <!-- ==========================================
+         BOOTSTRAP
+    =========================================== -->
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+
+    <!-- ==========================================
+         FONT AWESOME
+    =========================================== -->
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    >
+
+
+    <style>
+
+        /* ==========================================
+           RESET
+        =========================================== */
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        /* ==========================================
+           BODY
+        =========================================== */
+
+        body {
+
+            margin: 0;
+
+            min-height: 100vh;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #ffffff 0%,
+                    #9bd5f3 100%
+                );
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            padding: 20px;
+        }
+
+
+        /* ==========================================
+           LOGIN CONTAINER
+        =========================================== */
+
+        .login-container {
+
+            width: 100%;
+
+            max-width: 420px;
+        }
+
+
+        /* ==========================================
+           LOGIN CARD
+        =========================================== */
+
+        .login-card {
+
+            width: 100%;
+
+            background: #ffffff;
+
+            border-radius: 18px;
+
+            padding: 35px;
+
+            box-shadow:
+                0 20px 50px
+                rgba(0, 0, 0, 0.20);
+        }
+
+
+        /* ==========================================
+           HEADER
+        =========================================== */
+
+        .login-header {
+
+            text-align: center;
+
+            margin-bottom: 30px;
+        }
+
+
+        .login-icon {
+
+            width: 80px;
+
+            height: 80px;
+
+            margin: 0 auto 20px;
+
+            border-radius: 50%;
+
+            background: #0d6efd;
+
+            color: #ffffff;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            font-size: 34px;
+
+            box-shadow:
+                0 10px 25px
+                rgba(13, 110, 253, 0.25);
+        }
+
+
+        .login-header h2 {
+
+            margin: 0;
+
+            font-weight: 700;
+
+            color: #212529;
+        }
+
+
+        .login-header p {
+
+            margin-top: 8px;
+
+            margin-bottom: 0;
+
+            color: #6c757d;
+
+            font-size: 14px;
+        }
+
+
+        /* ==========================================
+           FLASH MESSAGE
+        =========================================== */
+
+        .alert {
+
+            border-radius: 10px;
+
+            font-size: 14px;
+
+            margin-bottom: 20px;
+        }
+
+
+        /* ==========================================
+           FORM
+        =========================================== */
+
+        .form-label {
+
+            font-weight: 600;
+
+            color: #343a40;
+
+            margin-bottom: 8px;
+        }
+
+
+        .input-group {
+
+            margin-bottom: 0;
+        }
+
+
+        .input-group-text {
+
+            min-width: 48px;
+
+            justify-content: center;
+
+            background: #f8f9fa;
+
+            border-right: 0;
+
+            color: #6c757d;
+        }
+
+
+        .form-control {
+
+            height: 48px;
+
+            border-left: 0;
+
+            font-size: 15px;
+        }
+
+
+        .form-control:focus {
+
+            box-shadow: none;
+
+            border-color: #86b7fe;
+        }
+
+
+        .input-group:focus-within
+        .input-group-text {
+
+            border-color: #86b7fe;
+
+            color: #0d6efd;
+
+            background: #ffffff;
+        }
+
+
+        /* ==========================================
+           REMEMBER ME
+        =========================================== */
+
+        .form-check-input {
+
+            cursor: pointer;
+        }
+
+
+        .form-check-input:checked {
+
+            background-color: #0d6efd;
+
+            border-color: #0d6efd;
+        }
+
+
+        .form-check-label {
+
+            color: #6c757d;
+
+            font-size: 14px;
+
+            cursor: pointer;
+        }
+
+
+        /* ==========================================
+           LOGIN BUTTON
+        =========================================== */
+
+        .login-btn {
+
+            height: 50px;
+
+            border-radius: 8px;
+
+            font-weight: 600;
+
+            font-size: 16px;
+
+            transition:
+                transform 0.2s ease,
+                box-shadow 0.2s ease;
+        }
+
+
+        .login-btn:hover {
+
+            transform: translateY(-1px);
+
+            box-shadow:
+                0 8px 20px
+                rgba(13, 110, 253, 0.25);
+        }
+
+
+        .login-btn:active {
+
+            transform: translateY(0);
+        }
+
+
+        /* ==========================================
+           FOOTER
+        =========================================== */
+
+        .login-footer {
+
+            text-align: center;
+
+            margin-top: 25px;
+
+            color: #6c757d;
+
+            font-size: 13px;
+        }
+
+
+        /* ==========================================
+           MOBILE
+        =========================================== */
+
+        @media (max-width: 576px) {
+
+            body {
+
+                padding: 15px;
+            }
+
+
+            .login-card {
+
+                padding: 25px 20px;
+
+                border-radius: 14px;
+            }
+
+
+            .login-icon {
+
+                width: 70px;
+
+                height: 70px;
+
+                font-size: 28px;
+            }
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- ==========================================
+         LOGIN CONTAINER
+    =========================================== -->
+
+    <div class="login-container">
+
+        <div class="login-card">
+
+
+            <!-- ==========================================
+                 HEADER
+            =========================================== -->
+
+            <div class="login-header">
+
+                <div class="login-icon">
+
+                    <i class="fa-solid fa-user-shield"></i>
+
+                </div>
+
+
+                <h2>
+                    Admin Login
+                </h2>
+
+
+                <p>
+                    Login to your admin panel
+                </p>
+
+            </div>
+
+
+
+            <!-- ==========================================
+                 FLASH MESSAGES
+            =========================================== -->
+
+            {% with messages = get_flashed_messages(
+                with_categories=true
+            ) %}
+
+                {% if messages %}
+
+                    {% for category, message in messages %}
+
+                        <div
+                            class="alert alert-{{ category }} alert-dismissible fade show"
+                            role="alert"
+                        >
+
+                            <i
+                                class="
+                                    {% if category == 'success' %}
+                                        fa-solid fa-circle-check
+                                    {% elif category == 'danger' %}
+                                        fa-solid fa-circle-exclamation
+                                    {% elif category == 'warning' %}
+                                        fa-solid fa-triangle-exclamation
+                                    {% else %}
+                                        fa-solid fa-circle-info
+                                    {% endif %}
+                                    me-2
+                                "
+                            ></i>
+
+
+                            {{ message }}
+
+
+                            <button
+                                type="button"
+                                class="btn-close"
+                                data-bs-dismiss="alert"
+                                aria-label="Close"
+                            ></button>
+
+                        </div>
+
+                    {% endfor %}
+
+                {% endif %}
+
+            {% endwith %}
+
+
+
+<!-- ==========================================
+     LOGIN FORM
+========================================== -->
+
+<form
+    action="{{ url_for('admin.admin_login') }}"
+    method="POST"
+>
+
+    <!-- ==========================================
+         NAME
+    =========================================== -->
+
+    <div class="mb-3">
+
+        <label
+            for="name"
+            class="form-label"
+        >
+            Name
+        </label>
+
+        <div class="input-group">
+
+            <span class="input-group-text">
+                <i class="fa-solid fa-user"></i>
+            </span>
+
+            <input
+                type="text"
+                id="name"
+                name="name"
+                class="form-control"
+                placeholder="Enter your name"
+                autocomplete="username"
+                value="{{ request.form.get('name', '') }}"
+                required
+            >
+
+        </div>
+
+    </div>
+
+
+    <!-- ==========================================
+         PASSWORD
+    =========================================== -->
+
+    <div class="mb-3">
+
+        <label
+            for="password"
+            class="form-label"
+        >
+            Password
+        </label>
+
+        <div class="input-group">
+
+            <span class="input-group-text">
+                <i class="fa-solid fa-lock"></i>
+            </span>
+
+            <input
+                type="password"
+                id="password"
+                name="password"
+                class="form-control"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+                required
+            >
+
+        </div>
+
+    </div>
+    <!-- ==========================================
+         REMEMBER ME
+    =========================================== -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div class="form-check">
+
+            <input
+                type="checkbox"
+                class="form-check-input"
+                name="remember"
+                id="remember"
+            >
+
+            <label
+                class="form-check-label"
+                for="remember"
+            >
+                Remember me
+            </label>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==========================================
+         LOGIN BUTTON
+    =========================================== -->
+
+    <div class="d-grid">
+
+        <button
+            type="submit"
+            class="btn btn-primary login-btn"
+        >
+            <i class="fa-solid fa-right-to-bracket me-2"></i>
+            Login
+        </button>
+    </div>
+</form>
+            <!-- ==========================================
+                 FOOTER
+            =========================================== -->
+
+            <div class="login-footer">
+
+                <i
+                    class="fa-solid fa-shield-halved me-1"
+                ></i>
+
+                Admin Panel
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+
+
+    <!-- ==========================================
+         BOOTSTRAP JS
+    =========================================== -->
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    ></script>
+
+
+</body>
+
+</html>

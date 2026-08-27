@@ -2,20 +2,17 @@
    Google Font
 =========================== */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
 *{
     margin:0;
     padding:0;
     box-sizing:border-box;
     font-family:'Poppins',sans-serif;
 }
-
 body{
-    background:#efe2d4;
+    background: #f4e3d3;
     color:#333;
     overflow-x:hidden;
 }
-
 /* ===========================
    Sidebar
 =========================== */
@@ -25,13 +22,12 @@ body{
     left:0;
     width:260px;
     height:100vh;
-    background:#fff;
+    background: #656464;
     padding:25px 20px;
     border-radius:0 20px 20px 0;
     box-shadow:0 8px 25px rgba(0,0,0,.08);
     overflow-y:auto;
 }
-
 /* ===========================
    Main
 =========================== */
@@ -41,7 +37,6 @@ body{
     min-height:100vh;
     padding:25px;
 }
-
 /* ===========================
    Navbar
 =========================== */
@@ -55,18 +50,15 @@ body{
     box-shadow:0 5px 18px rgba(0,0,0,.08);
     margin-bottom:25px;
 }
-
 .navbar img{
     width:45px;
     height:45px;
     border-radius:50%;
 }
-
 .navbar i{
     font-size:20px;
     cursor:pointer;
 }
-
 /* ===========================
    Logo
 =========================== */
@@ -76,7 +68,6 @@ body{
     gap:12px;
     margin-bottom:35px;
 }
-
 .logo i{
     color:#ff8500;
     font-size:30px;
@@ -86,7 +77,6 @@ body{
     color:#222;
     font-weight:700;
 }
-
 /* ===========================
    Menu
 =========================== */
@@ -117,7 +107,7 @@ body{
 }
 
 .menu a.active{
-    background:#ff8500;
+    background: #0b54e8;
     color:#fff;
 }
 
