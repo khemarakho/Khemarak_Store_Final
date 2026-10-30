@@ -1,10 +1,10 @@
 import os
 import uuid
-from .auth import login_required
+from .auth import admin_required
 from flask import (render_template, request, redirect, url_for, flash, current_app)
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash
-from extensions import db
+from extensions import db, limiter
 from models import User
 from . import admin_bp
 # =========================================================
@@ -85,7 +85,7 @@ def delete_user_image(filename):
 # =========================================================
 
 @admin_bp.get("/users")
-@login_required
+@admin_required
 def admin_users():
     users = User.query.order_by(
         User.id.desc()
@@ -104,7 +104,8 @@ def admin_users():
     "/user/add",
     methods=["GET", "POST"]
 )
-@login_required
+@admin_required
+@limiter.limit("30 per minute")
 def add():
     if request.method == "POST":
         # -----------------------------------------
@@ -236,7 +237,7 @@ def add():
 @admin_bp.get(
     "/user/edit/<int:id>"
 )
-@login_required
+@admin_required
 def admin_user_edit(id):
     user = User.query.get_or_404(
         id
@@ -251,7 +252,8 @@ def admin_user_edit(id):
 # EDIT USER - UPDATE
 # =========================================================
 @admin_bp.post("/user/edit")
-@login_required
+@admin_required
+@limiter.limit("30 per minute")
 def edit():
     user_id = request.form.get(
         "user_id"
@@ -391,7 +393,7 @@ def edit():
 @admin_bp.get(
     "/user/delete/<int:user_id>"
 )
-@login_required
+@admin_required
 def confirm_delete(user_id):
     user = User.query.get_or_404(
         user_id
@@ -411,7 +413,8 @@ def confirm_delete(user_id):
 @admin_bp.post(
     "/user/delete"
 )
-@login_required
+@admin_required
+@limiter.limit("30 per minute")
 def delete_user():
     user_id = request.form.get(
         "user_id"

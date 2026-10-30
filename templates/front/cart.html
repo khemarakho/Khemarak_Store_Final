@@ -2,267 +2,362 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopping Cart - MobiShop</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Shopping Cart - Khemarak_Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 {% include "./front/Share/navbar.html" %}
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">Khemarak_Store</a>
-        </div>
-    </nav>
-<div class="container my-5">
-    <h1 class="mb-4">Shopping Cart</h1>
+
+<div class="container my-4 my-md-5">
+    <h1 class="mb-4 fw-bold" style="font-size: clamp(1.5rem, 3vw, 2rem);">
+        <i class="fas fa-shopping-cart text-primary me-2"></i>Shopping Cart
+    </h1>
+
     {% if cart %}
-    <div class="row">
+    <div class="row g-4">
         <div class="col-lg-8">
-            <div class="card">
-
-                <div class="card-body">
-
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-
-                        <table class="table">
-
-                            <thead>
+                        <table class="table align-middle mb-0">
+                            <thead class="table-light">
                                 <tr>
+                                    <th class="ps-3 ps-md-4" style="width: 45px;">
+                                        <div class="form-check m-0 d-flex align-items-center">
+                                            <input class="form-check-input" type="checkbox" id="selectAllCheckbox" title="Select All" style="cursor: pointer; width: 1.15rem; height: 1.15rem;">
+                                        </div>
+                                    </th>
                                     <th>Product</th>
                                     <th>Price</th>
                                     <th>Quantity</th>
                                     <th>Total</th>
-                                    <th>Action</th>
+                                    <th class="text-end pe-3 pe-md-4">Action</th>
                                 </tr>
                             </thead>
-
                             <tbody>
-
                             {% for item in cart %}
-
-                            <tr>
-
+                            <tr class="cart-item-row" data-index="{{ loop.index0 }}" data-price="{{ item.price }}" data-quantity="{{ item.quantity }}">
+                                <td class="ps-3 ps-md-4">
+                                    <div class="form-check m-0 d-flex align-items-center">
+                                        <input class="form-check-input item-checkbox" type="checkbox"
+                                               data-index="{{ loop.index0 }}"
+                                               data-price="{{ item.price }}"
+                                               data-quantity="{{ item.quantity }}"
+                                               style="cursor: pointer; width: 1.15rem; height: 1.15rem;"
+                                               {% if item.get('selected', True) %}checked{% endif %}>
+                                    </div>
+                                </td>
                                 <td>
                                     <div class="d-flex align-items-center">
-
                                         <img src="{{ item.image }}"
-                                             width="60"
-                                             height="60"
-                                             class="me-3 rounded">
-
+                                             width="55"
+                                             height="55"
+                                             class="me-3 rounded-3"
+                                             style="object-fit: cover; background: #f8fafc;"
+                                             onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&auto=format&fit=crop&q=80';">
                                         <div>
-
-                                            <h6 class="mb-0">
-                                                {{ item.name }}
-                                            </h6>
-
+                                            <h6 class="mb-0 fw-bold" style="font-size: 0.95rem;">{{ item.name }}</h6>
                                             {% if item.color %}
-                                            <small class="text-muted">
-                                                Color: {{ item.color }}
-                                            </small>
-                                            <br>
+                                            <small class="text-muted d-block" style="font-size: 0.8rem;">Color: {{ item.color }}</small>
                                             {% endif %}
-
                                             {% if item.storage %}
-                                            <small class="text-muted">
-                                                Storage: {{ item.storage }}
-                                            </small>
+                                            <small class="text-muted d-block" style="font-size: 0.8rem;">Storage: {{ item.storage }}</small>
                                             {% endif %}
-
                                         </div>
-
                                     </div>
                                 </td>
-
+                                <td class="fw-semibold">${{ "%.2f"|format(item.price) }}</td>
                                 <td>
-                                    ${{ "%.2f"|format(item.price) }}
-                                </td>
-
-                                <td>
-
-                                    <div class="btn-group">
-
-                                        <button
-                                            class="btn btn-outline-secondary btn-sm"
-                                            onclick="updateCart({{ loop.index0 }}, 'decrease')">
-                                            -
+                                    <div class="btn-group border rounded-pill overflow-hidden" role="group">
+                                        <button type="button" class="btn btn-sm btn-light border-0 px-2" onclick="updateCartItem({{ loop.index0 }}, 'decrease')">
+                                            <i class="fas fa-minus" style="font-size: 0.7rem;"></i>
                                         </button>
-
-                                        <span class="btn btn-light btn-sm">
+                                        <span class="btn btn-sm btn-white border-0 px-3 fw-bold disabled" style="opacity: 1;">
                                             {{ item.quantity }}
                                         </span>
-
-                                        <button
-                                            class="btn btn-outline-secondary btn-sm"
-                                            onclick="updateCart({{ loop.index0 }}, 'increase')">
-                                            +
+                                        <button type="button" class="btn btn-sm btn-light border-0 px-2" onclick="updateCartItem({{ loop.index0 }}, 'increase')">
+                                            <i class="fas fa-plus" style="font-size: 0.7rem;"></i>
                                         </button>
-
                                     </div>
-
                                 </td>
-
-                                <td>
-                                    ${{ "%.2f"|format(item.price * item.quantity) }}
-                                </td>
-
-                                <td>
-
-                                    <button
-                                        class="btn btn-danger btn-sm"
-                                        onclick="updateCart({{ loop.index0 }}, 'remove')">
-
-                                        <i class="fas fa-trash"></i>
-
+                                <td class="fw-bold text-primary">${{ "%.2f"|format(item.price * item.quantity) }}</td>
+                                <td class="text-end pe-3 pe-md-4">
+                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
+                                            style="width: 32px; height: 32px;"
+                                            onclick="updateCartItem({{ loop.index0 }}, 'remove')"
+                                            aria-label="Remove item">
+                                        <i class="fas fa-trash-alt"></i>
                                     </button>
-
                                 </td>
-
                             </tr>
-
                             {% endfor %}
-
                             </tbody>
-
                         </table>
-
                     </div>
-
                 </div>
-
             </div>
 
+            <div class="mt-3">
+                <a href="{{ url_for('shop') }}" class="btn btn-outline-secondary rounded-pill px-4">
+                    <i class="fas fa-arrow-left me-1"></i> Continue Shopping
+                </a>
+            </div>
         </div>
 
         <div class="col-lg-4">
-
-            <div class="card">
-
-                <div class="card-body">
-
-                    <h5>Order Summary</h5>
-
-                    <hr>
-
-                    <div class="d-flex justify-content-between">
-                        <span>Subtotal:</span>
-                        <span>${{ "%.2f"|format(subtotal) }}</span>
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">Order Summary</h5>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Selected Items:</span>
+                        <span class="fw-semibold text-primary" id="summary-count">
+                            {{ selected_count }} {% if selected_count == 1 %}item{% else %}items{% endif %}
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Subtotal:</span>
+                        <span class="fw-semibold" id="summary-subtotal">${{ "%.2f"|format(subtotal) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Estimated Shipping:</span>
+                        <span class="fw-semibold" id="summary-shipping">{{ '$%.2f'|format(shipping) if shipping > 0 else 'FREE' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="text-muted">Taxes (10%):</span>
+                        <span class="fw-semibold" id="summary-tax">${{ "%.2f"|format(tax) }}</span>
+                    </div>
+                    <hr class="my-3">
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="fs-5 fw-bold">Total:</span>
+                        <span class="fs-4 fw-bold text-primary" id="summary-total">${{ "%.2f"|format(total) }}</span>
                     </div>
 
-                    <div class="d-flex justify-content-between">
-                        <span>Shipping:</span>
-                        <span>${{ "%.2f"|format(shipping) }}</span>
+                    <button type="button" id="proceedCheckoutBtn" onclick="proceedToCheckout()" class="btn btn-primary w-100 py-3 rounded-pill fw-bold shadow-sm" {% if selected_count == 0 %}disabled{% endif %}>
+                        <i class="fas fa-lock me-1"></i> Proceed to Checkout (<span id="btn-count">{{ selected_count }}</span>)
+                    </button>
+                    <div id="selection-warning" class="text-danger small mt-2 text-center" style="display: {% if selected_count == 0 %}block{% else %}none{% endif %};">
+                        <i class="fas fa-exclamation-circle me-1"></i> Please select at least 1 product for checkout.
                     </div>
-
-                    <div class="d-flex justify-content-between">
-                        <span>Tax:</span>
-                        <span>${{ "%.2f"|format(tax) }}</span>
-                    </div>
-
-                    <hr>
-
-                    <div class="d-flex justify-content-between">
-                        <strong>Total:</strong>
-                        <strong>${{ "%.2f"|format(total) }}</strong>
-                    </div>
-
-                    <a href="{{ url_for('checkout') }}"
-                       class="btn btn-primary w-100 mt-3">
-                       Proceed to Checkout
-                    </a>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
-
     {% else %}
-
-    <div class="text-center py-5">
-
-        <i class="fas fa-shopping-cart fa-4x text-muted"></i>
-
-        <h3 class="mt-3">
-            Your cart is empty
-        </h3>
-
-        <a href="{{ url_for('shop') }}"
-           class="btn btn-primary mt-3">
-            Start Shopping
-        </a>
-
+    <div class="card border-0 shadow-sm rounded-4 text-center py-5 px-3">
+        <i class="fas fa-shopping-cart fa-4x text-muted mb-3 opacity-50"></i>
+        <h3 class="fw-bold">Your cart is empty</h3>
+        <p class="text-muted">Looks like you haven't added any smartphones yet.</p>
+        <div class="mt-3">
+            <a href="{{ url_for('shop') }}" class="btn btn-primary rounded-pill px-4 py-2">
+                <i class="fas fa-store me-1"></i> Browse Phones
+            </a>
+        </div>
     </div>
-
     {% endif %}
-
 </div>
 
-<script>
-function updateCart(index, action){
-
-    fetch('/update-cart', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            index: index,
-            action: action
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if(data.success){
-            location.reload();
-        }
-    });
-}
-</script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 {% include "./front/Share/footer.html" %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-
-function updateCart(index, action) {
-
-    fetch('/update-cart', {
-
-        method: 'POST',
-
-        headers: {
-            'Content-Type': 'application/json'
-        },
-
-        body: JSON.stringify({
-            index: index,
-            action: action
-        })
-
-    })
-
-    .then(response => response.json())
-
-    .then(data => {
-
-        if (data.success) {
-
-            location.reload();
-
+function getSelectedIndices() {
+    const indices = [];
+    document.querySelectorAll('.item-checkbox').forEach(cb => {
+        if (cb.checked) {
+            indices.push(parseInt(cb.dataset.index));
         }
-
-    })
-
-    .catch(error => {
-
-        console.log(error);
-
     });
-
+    return indices;
 }
 
+function recalculateSummary() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const checkoutBtn = document.getElementById('proceedCheckoutBtn');
+    const warning = document.getElementById('selection-warning');
+
+    let subtotal = 0;
+    let selectedCount = 0;
+    const totalCount = checkboxes.length;
+
+    checkboxes.forEach(cb => {
+        if (cb.checked) {
+            const price = parseFloat(cb.dataset.price) || 0;
+            const quantity = parseInt(cb.dataset.quantity) || 1;
+            subtotal += price * quantity;
+            selectedCount += 1;
+        }
+    });
+
+    if (selectAllCheckbox) {
+        if (totalCount > 0 && selectedCount === totalCount) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (selectedCount === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        }
+    }
+
+    const shipping = (subtotal > 500 || subtotal === 0) ? 0 : 15;
+    const tax = Math.round(subtotal * 0.1 * 100) / 100;
+    const total = Math.round((subtotal + shipping + tax) * 100) / 100;
+
+    const summaryCount = document.getElementById('summary-count');
+    if (summaryCount) {
+        summaryCount.textContent = selectedCount + (selectedCount === 1 ? ' item' : ' items');
+    }
+    const summarySubtotal = document.getElementById('summary-subtotal');
+    if (summarySubtotal) {
+        summarySubtotal.textContent = '$' + subtotal.toFixed(2);
+    }
+    const summaryShipping = document.getElementById('summary-shipping');
+    if (summaryShipping) {
+        summaryShipping.textContent = shipping > 0 ? '$' + shipping.toFixed(2) : 'FREE';
+    }
+    const summaryTax = document.getElementById('summary-tax');
+    if (summaryTax) {
+        summaryTax.textContent = '$' + tax.toFixed(2);
+    }
+    const summaryTotal = document.getElementById('summary-total');
+    if (summaryTotal) {
+        summaryTotal.textContent = '$' + total.toFixed(2);
+    }
+    const btnCount = document.getElementById('btn-count');
+    if (btnCount) {
+        btnCount.textContent = selectedCount;
+    }
+
+    if (selectedCount === 0) {
+        if (checkoutBtn) checkoutBtn.disabled = true;
+        if (warning) warning.style.display = 'block';
+    } else {
+        if (checkoutBtn) checkoutBtn.disabled = false;
+        if (warning) warning.style.display = 'none';
+    }
+}
+
+function syncSelection(selectAllParam = null) {
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+    
+    if (selectAllParam !== null) {
+        fetch('/cart/select-all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': token
+            },
+            body: JSON.stringify({ select_all: selectAllParam })
+        }).catch(err => console.error(err));
+    } else {
+        fetch('/cart/select', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': token
+            },
+            body: JSON.stringify({ selected_indices: getSelectedIndices() })
+        }).catch(err => console.error(err));
+    }
+}
+
+function proceedToCheckout() {
+    const selected = getSelectedIndices();
+    if (selected.length === 0) {
+        alert('Please select at least 1 product to checkout.');
+        return;
+    }
+
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+    const checkoutBtn = document.getElementById('proceedCheckoutBtn');
+    if (checkoutBtn) {
+        checkoutBtn.disabled = true;
+        checkoutBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Preparing Checkout...';
+    }
+
+    fetch('/cart/select', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': token
+        },
+        body: JSON.stringify({ selected_indices: selected })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = "{{ url_for('checkout') }}";
+        } else {
+            alert(data.message || 'Error proceeding to checkout');
+            if (checkoutBtn) {
+                checkoutBtn.disabled = false;
+                checkoutBtn.innerHTML = '<i class="fas fa-lock me-1"></i> Proceed to Checkout (' + selected.length + ')';
+            }
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        window.location.href = "{{ url_for('checkout') }}";
+    });
+}
+
+function updateCartItem(index, action) {
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+    fetch('/update-cart', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': token
+        },
+        body: JSON.stringify({
+            index: index,
+            action: action,
+            selected_indices: getSelectedIndices()
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || 'Error updating cart');
+        }
+    })
+    .catch(error => console.error(error));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const isChecked = this.checked;
+            itemCheckboxes.forEach(cb => {
+                cb.checked = isChecked;
+            });
+            recalculateSummary();
+            syncSelection(isChecked);
+        });
+    }
+
+    itemCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            recalculateSummary();
+            syncSelection();
+        });
+    });
+
+    recalculateSummary();
+});
 </script>
 </body>
 </html>

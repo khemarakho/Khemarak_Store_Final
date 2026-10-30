@@ -1,1065 +1,619 @@
 import os
-from flask import send_from_directory
-from admin import admin_bp
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, current_app
+import uuid
 from functools import wraps
 from datetime import datetime
-import uuid
-import requests
-from extensions import db,migrate
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    jsonify,
+    session,
+    current_app,
+    send_from_directory
+)
+from flask_wtf.csrf import CSRFError
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from extensions import db, migrate, csrf, limiter, cors
 from config import config
+from models.user import User
+from models.category import Category
+from models.product import Product
+from models.product_image import ProductImage
+from models.order import Order
+from admin import admin_bp
+from admin.auth import admin_required
+from api import api_bp
+from notifications import send_telegram_message, send_product_photo
+from upload_service import get_image_url
 
+# In-memory user cache fallback
+USERS = {}
 
-BOT_TOKEN = "8294946961:AAFfr6tWQk_dLcdCyw_G7kAQUsdyCpQyywE"
-CHAT_ID = "-1003720172728"
-def send_telegram_message(message):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": -1003720172728,
-        "text": message,
-        "parse_mode": "HTML"
-    }
-    try:
-
-        response = requests.post(
-            url,
-            data=payload
-        )
-
-        print("Telegram Response:")
-        print(response.text)
-
-        return response.json()
-
-    except Exception as e:
-
-        print("Telegram Error:", e)
-
-        return None
-def send_product_photo(image_url, caption):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
-    try:
-        response = requests.post(
-            url,
-            data={
-                "chat_id": -1003720172728,
-                "photo": image_url,
-                "caption": caption
-            }
-        )
-        print("Photo Response:")
-        print(response.text)
-        return response.json()
-    except Exception as e:
-        print("Photo Error:", e)
-        return None
 app = Flask(__name__)
 app.config.from_object(config)
+
+# ==========================================
+# INITIALIZE EXTENSIONS
+# ==========================================
 db.init_app(app)
+migrate.init_app(app, db)
+csrf.init_app(app)
+limiter.init_app(app)
+cors.init_app(
+    app,
+    resources={r"/api/*": {"origins": "*"}},
+    supports_credentials=True
+)
+
+# CSRF exemption for REST API (APIs use JSON, tokens, and CORS)
+csrf.exempt(api_bp)
+
+# ==========================================
+# REGISTER BLUEPRINTS
+# ==========================================
 app.register_blueprint(admin_bp)
+app.register_blueprint(api_bp)
+
 with app.app_context():
     db.create_all()
-USERS = {
-    "admin@mobishop.com": {
-        "email": "admin@mobishop.com",
-        "password": "admin123",
-        "name": "Admin User",
-        "role": "admin",
-        "created_at": "2025-01-01",
-        "orders": []
-    }
-}
-PRODUCTS = [
-    # ========== APPLE PRODUCTS (10 products) ==========
-    {
-        "id": 1,
-        "name": "iPhone 15 Pro Max",
-        "brand": "Apple",
-        "price": 1199,
-        "original_price": 1299,
-        "discount": 8,
-        "rating": 4.9,
-        "reviews": 1234,
-        "image": "https://i.pinimg.com/1200x/05/5a/29/055a294e8b96aab43b38c5ef762d0555.jpg",
-        "colors": ["Natural Titanium", "Blue Titanium", "White Titanium", "Black Titanium"],
-        "storage": ["256GB", "512GB", "1TB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 45
-    },
-    {
-        "id": 2,
-        "name": "iPhone 15 Pro",
-        "brand": "Apple",
-        "price": 999,
-        "original_price": 1099,
-        "discount": 9,
-        "rating": 4.8,
-        "reviews": 987,
-        "image": "https://i.pinimg.com/736x/17/e1/a5/17e1a575a8369f7e8fad1732af55280c.jpg",
-        "colors": ["Natural Titanium", "Blue Titanium", "White Titanium"],
-        "storage": ["128GB", "256GB", "512GB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 52
-    },
-    {
-        "id": 3,
-        "name": "iPhone 15 Plus",
-        "brand": "Apple",
-        "price": 899,
-        "original_price": 999,
-        "discount": 10,
-        "rating": 4.7,
-        "reviews": 756,
-        "image": "https://i.pinimg.com/1200x/7e/58/bc/7e58bc3a3797c3220478eb2dad0d9842.jpg",
-        "colors": ["Pink", "Yellow", "Green", "Blue", "Black"],
-        "storage": ["128GB", "256GB", "512GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 38
-    },
-    {
-        "id": 4,
-        "name": "iPhone 15",
-        "brand": "Apple",
-        "price": 799,
-        "original_price": 899,
-        "discount": 11,
-        "rating": 4.7,
-        "reviews": 892,
-        "image": "https://i.pinimg.com/1200x/64/24/18/6424184a64ed588c3283f138b3053a69.jpg",
-        "colors": ["Pink", "Yellow", "Green", "Blue", "Black"],
-        "storage": ["128GB", "256GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 67
-    },
-    {
-        "id": 5,
-        "name": "iPhone 14 Pro Max",
-        "brand": "Apple",
-        "price": 999,
-        "original_price": 1199,
-        "discount": 17,
-        "rating": 4.8,
-        "reviews": 2345,
-        "image": "https://i.pinimg.com/1200x/01/40/b3/0140b387346663478a324b689b922e1d.jpg",
-        "colors": ["Deep Purple", "Gold", "Silver", "Space Black"],
-        "storage": ["128GB", "256GB", "512GB", "1TB"],
-        "is_new": False,
-        "featured": True,
-        "stock": 23
-    },
-    {
-        "id": 6,
-        "name": "iPhone 14 Pro",
-        "brand": "Apple",
-        "price": 899,
-        "original_price": 1099,
-        "discount": 18,
-        "rating": 4.7,
-        "reviews": 1876,
-        "image": "https://i.pinimg.com/736x/66/02/be/6602be19dcd832cb13cb2481a683dbf7.jpg",
-        "colors": ["Deep Purple", "Gold", "Silver", "Space Black"],
-        "storage": ["128GB", "256GB", "512GB", "1TB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 31
-    },
-    {
-        "id": 7,
-        "name": "iPhone 17 Pro Max",
-        "brand": "Apple",
-        "price": 1549,
-        "original_price": 1899,
-        "discount": 17,
-        "rating": 4.6,
-        "reviews": 1234,
-        "image": "https://i.pinimg.com/1200x/d8/35/c3/d835c3944ca58d05e142b396f18a146c.jpg",
-        "colors": ["Blue", "Purple", "Yellow", "Midnight", "Starlight"],
-        "storage": ["128GB", "256GB", "512GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 44
-    },
-    {
-        "id": 8,
-        "name": "iPhone 14",
-        "brand": "Apple",
-        "price": 699,
-        "original_price": 799,
-        "discount": 13,
-        "rating": 4.6,
-        "reviews": 2156,
-        "image": "https://i.pinimg.com/1200x/74/81/1f/74811f31ccd7fb57928c26b068e2e3ba.jpg",
-        "colors": ["Blue", "Purple", "Yellow", "Midnight", "Starlight"],
-        "storage": ["128GB", "256GB", "512GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 56
-    },
-    {
-        "id": 9,
-        "name": "iPhone SE (3rd Gen)",
-        "brand": "Apple",
-        "price": 429,
-        "original_price": 499,
-        "discount": 14,
-        "rating": 4.5,
-        "reviews": 876,
-        "image": "https://i.pinimg.com/1200x/d4/40/29/d44029329918b28adb18b3a5ac644806.jpg",
-        "colors": ["Midnight", "Starlight", "Product RED"],
-        "storage": ["64GB", "128GB", "256GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 89
-    },
-    {
-        "id": 10,
-        "name": "iPhone 13 Pro Max",
-        "brand": "Apple",
-        "price": 799,
-        "original_price": 1099,
-        "discount": 27,
-        "rating": 4.7,
-        "reviews": 3456,
-        "image": "https://i.pinimg.com/1200x/aa/d5/67/aad567c4c481909bee3ce3837550a7db.jpg",
-        "colors": ["Sierra Blue", "Graphite", "Gold", "Silver"],
-        "storage": ["128GB", "256GB", "512GB", "1TB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 12
-    },
 
-    # ========== SAMSUNG PRODUCTS (10 products) ==========
-    {
-        "id": 11,
-        "name": "Samsung Galaxy S24 Ultra",
-        "brand": "Samsung",
-        "price": 1299,
-        "original_price": 1399,
-        "discount": 7,
-        "rating": 4.9,
-        "reviews": 2345,
-        "image": "https://i.pinimg.com/736x/6f/b2/6e/6fb26e46cd195696459eee7c8ff6f4d1.jpg",
-        "colors": ["Titanium Gray", "Titanium Black", "Titanium Violet", "Titanium Yellow"],
-        "storage": ["256GB", "512GB", "1TB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 34
-    },
-    {
-        "id": 12,
-        "name": "Samsung Galaxy S24 Plus",
-        "brand": "Samsung",
-        "price": 1099,
-        "original_price": 1199,
-        "discount": 8,
-        "rating": 4.8,
-        "reviews": 1876,
-        "image": "https://i.pinimg.com/736x/aa/2f/29/aa2f29cb067e9ef16c17792fc493769c.jpg",
-        "colors": ["Onyx Black", "Marble Gray", "Cobalt Violet", "Amber Yellow"],
-        "storage": ["256GB", "512GB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 45
-    },
-    {
-        "id": 13,
-        "name": "Samsung Galaxy S24",
-        "brand": "Samsung",
-        "price": 799,
-        "original_price": 899,
-        "discount": 11,
-        "rating": 4.7,
-        "reviews": 1543,
-        "image": "https://i.pinimg.com/736x/5e/67/e2/5e67e2436d4cab7808e890400c4ac126.jpg",
-        "colors": ["Onyx Black", "Marble Gray", "Cobalt Violet", "Amber Yellow"],
-        "storage": ["128GB", "256GB", "512GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 67
-    },
-    {
-        "id": 14,
-        "name": "Samsung Galaxy Z Fold 5",
-        "brand": "Samsung",
-        "price": 1799,
-        "original_price": 1899,
-        "discount": 5,
-        "rating": 4.8,
-        "reviews": 987,
-        "image": "https://i.pinimg.com/236x/96/75/94/9675945a9867c5d1ee937ed741269aa3.jpg",
-        "colors": ["Icy Blue", "Phantom Black", "Cream"],
-        "storage": ["512GB", "1TB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 23
-    },
-    {
-        "id": 15,
-        "name": "Samsung Galaxy Z Flip 5",
-        "brand": "Samsung",
-        "price": 999,
-        "original_price": 1099,
-        "discount": 9,
-        "rating": 4.7,
-        "reviews": 1234,
-        "image": "https://i.pinimg.com/1200x/db/8f/0a/db8f0ac60f487fe988b2756ac0df6d8d.jpg",
-        "colors": ["Mint", "Graphite", "Cream", "Lavender"],
-        "storage": ["256GB", "512GB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 34
-    },
-    {
-        "id": 16,
-        "name": "Samsung Galaxy A55 5G",
-        "brand": "Samsung",
-        "price": 449,
-        "original_price": 499,
-        "discount": 10,
-        "rating": 4.5,
-        "reviews": 2345,
-        "image": "https://i.pinimg.com/1200x/f1/eb/7b/f1eb7b2e9cdc57fa087030667e97debe.jpg",
-        "colors": ["Awesome Iceblue", "Awesome Lilac", "Awesome Navy"],
-        "storage": ["128GB", "256GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 89
-    },
-    {
-        "id": 17,
-        "name": "Samsung Galaxy A35 5G",
-        "brand": "Samsung",
-        "price": 399,
-        "original_price": 449,
-        "discount": 11,
-        "rating": 4.4,
-        "reviews": 1876,
-        "image": "https://i.pinimg.com/736x/5e/67/e2/5e67e2436d4cab7808e890400c4ac126.jpg",
-        "colors": ["Awesome Iceblue", "Awesome Lilac"],
-        "storage": ["128GB", "256GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 112
-    },
-    {
-        "id": 18,
-        "name": "Samsung Galaxy S23 Ultra",
-        "brand": "Samsung",
-        "price": 949,
-        "original_price": 1199,
-        "discount": 21,
-        "rating": 4.8,
-        "reviews": 3456,
-        "image": "https://i.pinimg.com/736x/6f/b2/6e/6fb26e46cd195696459eee7c8ff6f4d1.jpg",
-        "colors": ["Phantom Black", "Green", "Cream", "Lavender"],
-        "storage": ["256GB", "512GB", "1TB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 45
-    },
-    {
-        "id": 19,
-        "name": "Samsung Galaxy S23 Plus",
-        "brand": "Samsung",
-        "price": 799,
-        "original_price": 999,
-        "discount": 20,
-        "rating": 4.7,
-        "reviews": 2345,
-        "image": "https://i.pinimg.com/736x/aa/2f/29/aa2f29cb067e9ef16c17792fc493769c.jpg",
-        "colors": ["Phantom Black", "Green", "Cream", "Lavender"],
-        "storage": ["256GB", "512GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 56
-    },
-    {
-        "id": 20,
-        "name": "Samsung Galaxy A15 5G",
-        "brand": "Samsung",
-        "price": 199,
-        "original_price": 249,
-        "discount": 20,
-        "rating": 4.3,
-        "reviews": 876,
-        "image": "https://i.pinimg.com/1200x/f1/eb/7b/f1eb7b2e9cdc57fa087030667e97debe.jpg",
-        "colors": ["Blue Black", "Light Blue"],
-        "storage": ["128GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 156
-    },
+# ==========================================
+# ERROR HANDLERS
+# ==========================================
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    if request.is_json or request.path.startswith("/api/"):
+        return jsonify({
+            "success": False,
+            "error": "CSRF token missing or invalid",
+            "message": e.description
+        }), 400
+    flash("Your session security token has expired. Please try submitting again.", "warning")
+    return redirect(request.referrer or url_for("index"))
 
-    # ========== OPPO PRODUCTS (8 products) ==========
-    {
-        "id": 21,
-        "name": "OPPO Find X7 Ultra",
-        "brand": "Oppo",
-        "price": 1199,
-        "original_price": 1299,
-        "discount": 8,
-        "rating": 4.8,
-        "reviews": 567,
-        "image": "https://i.pinimg.com/1200x/a4/43/37/a4433724bbc8c42b037b3976a1f39e70.jpg",
-        "colors": ["Ocean Blue", "Black", "Silver"],
-        "storage": ["256GB", "512GB", "1TB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 34
-    },
-    {
-        "id": 22,
-        "name": "OPPO Find N3 Flip",
-        "brand": "Oppo",
-        "price": 899,
-        "original_price": 999,
-        "discount": 10,
-        "rating": 4.7,
-        "reviews": 432,
-        "image": "https://i.pinimg.com/1200x/45/53/70/4553703eec8d89f405455dff6f100086.jpg",
-        "colors": ["Cream Gold", "Slim Black", "Rose Pink"],
-        "storage": ["256GB", "512GB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 45
-    },
-    {
-        "id": 23,
-        "name": "OPPO Reno11 Pro",
-        "brand": "Oppo",
-        "price": 649,
-        "original_price": 749,
-        "discount": 13,
-        "rating": 4.6,
-        "reviews": 678,
-        "image": "https://i.pinimg.com/736x/6c/40/48/6c4048026291c02f0ed21b5b879cad85.jpg",
-        "colors": ["Pearl White", "Moss Green"],
-        "storage": ["256GB", "512GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 67
-    },
-    {
-        "id": 24,
-        "name": "OPPO Reno11",
-        "brand": "Oppo",
-        "price": 499,
-        "original_price": 599,
-        "discount": 17,
-        "rating": 4.5,
-        "reviews": 789,
-        "image": "https://i.pinimg.com/736x/b2/ec/23/b2ec23a8affac26f542fc8e2c55dd261.jpg",
-        "colors": ["Wave Green", "Rock Grey"],
-        "storage": ["128GB", "256GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 89
-    },
-    {
-        "id": 25,
-        "name": "OPPO Find X6 Pro",
-        "brand": "Oppo",
-        "price": 999,
-        "original_price": 1199,
-        "discount": 17,
-        "rating": 4.7,
-        "reviews": 543,
-        "image": "https://i.pinimg.com/1200x/2a/eb/38/2aeb388a76d304ef66ce85003a7de41d.jpg",
-        "colors": ["Black", "Brown", "Green"],
-        "storage": ["256GB", "512GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 23
-    },
-    {
-        "id": 26,
-        "name": "OPPO A98 5G",
-        "brand": "Oppo",
-        "price": 349,
-        "original_price": 399,
-        "discount": 13,
-        "rating": 4.4,
-        "reviews": 1234,
-        "image": "https://i.pinimg.com/1200x/a4/43/37/a4433724bbc8c42b037b3976a1f39e70.jpg",
-        "colors": ["Cool Black", "Dreamy Blue"],
-        "storage": ["128GB", "256GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 112
-    },
-    {
-        "id": 27,
-        "name": "OPPO A78 5G",
-        "brand": "Oppo",
-        "price": 249,
-        "original_price": 299,
-        "discount": 17,
-        "rating": 4.3,
-        "reviews": 987,
-        "image": "https://i.pinimg.com/736x/6c/40/48/6c4048026291c02f0ed21b5b879cad85.jpg",
-        "colors": ["Mist Black", "Glowing Purple"],
-        "storage": ["128GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 145
-    },
-    {
-        "id": 28,
-        "name": "OPPO K11x",
-        "brand": "Oppo",
-        "price": 229,
-        "original_price": 279,
-        "discount": 18,
-        "rating": 4.2,
-        "reviews": 765,
-        "image": "https://i.pinimg.com/736x/b2/ec/23/b2ec23a8affac26f542fc8e2c55dd261.jpg",
-        "colors": ["Glaze Blue", "Shadow Black"],
-        "storage": ["128GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 178
-    },
 
-    # ========== XIAOMI PRODUCTS (8 products) ==========
-    {
-        "id": 29,
-        "name": "Xiaomi 14 Ultra",
-        "brand": "Xiaomi",
-        "price": 999,
-        "original_price": 1199,
-        "discount": 17,
-        "rating": 4.8,
-        "reviews": 987,
-        "image": "https://i.pinimg.com/1200x/db/8f/0a/db8f0ac60f487fe988b2756ac0df6d8d.jpg",
-        "colors": ["Black", "White", "Blue"],
-        "storage": ["256GB", "512GB", "1TB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 45
-    },
-    {
-        "id": 30,
-        "name": "Xiaomi 14 Pro",
-        "brand": "Xiaomi",
-        "price": 799,
-        "original_price": 899,
-        "discount": 11,
-        "rating": 4.7,
-        "reviews": 876,
-        "image": "https://i.pinimg.com/736x/e0/bf/be/e0bfbe214ad2b0a70a0c0af30b7b486c.jpg",
-        "colors": ["Black", "Silver", "Titanium"],
-        "storage": ["256GB", "512GB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 56
-    },
-    {
-        "id": 31,
-        "name": "Xiaomi 14",
-        "brand": "Xiaomi",
-        "price": 699,
-        "original_price": 799,
-        "discount": 13,
-        "rating": 4.7,
-        "reviews": 765,
-        "image": "https://i.pinimg.com/736x/c6/a8/f8/c6a8f8194606dfee828a8b5a8f21ffce.jpg",
-        "colors": ["Black", "White", "Jade Green"],
-        "storage": ["256GB", "512GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 78
-    },
-    {
-        "id": 32,
-        "name": "Xiaomi 13T Pro",
-        "brand": "Xiaomi",
-        "price": 599,
-        "original_price": 699,
-        "discount": 14,
-        "rating": 4.6,
-        "reviews": 1234,
-        "image": "https://i.pinimg.com/1200x/af/f1/43/aff143262a0689ffe2957303366ac190.jpg",
-        "colors": ["Alpine Blue", "Meadow Green", "Black"],
-        "storage": ["256GB", "512GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 67
-    },
-    {
-        "id": 33,
-        "name": "Xiaomi 13T",
-        "brand": "Xiaomi",
-        "price": 499,
-        "original_price": 599,
-        "discount": 17,
-        "rating": 4.5,
-        "reviews": 987,
-        "image": "https://i.pinimg.com/736x/b7/31/28/b73128f2e826c6df8829a0f665b2b463.jpg",
-        "colors": ["Alpine Blue", "Meadow Green"],
-        "storage": ["128GB", "256GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 89
-    },
-    {
-        "id": 34,
-        "name": "Xiaomi POCO F6 Pro",
-        "brand": "Xiaomi",
-        "price": 449,
-        "original_price": 549,
-        "discount": 18,
-        "rating": 4.5,
-        "reviews": 654,
-        "image": "https://i.pinimg.com/736x/c6/a8/f8/c6a8f8194606dfee828a8b5a8f21ffce.jpg",
-        "colors": ["Black", "White"],
-        "storage": ["256GB", "512GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 112
-    },
-    {
-        "id": 35,
-        "name": "Xiaomi Redmi Note 13 Pro",
-        "brand": "Xiaomi",
-        "price": 349,
-        "original_price": 399,
-        "discount": 13,
-        "rating": 4.4,
-        "reviews": 2345,
-        "image": "https://i.pinimg.com/1200x/d4/40/29/d44029329918b28adb18b3a5ac644806.jpg",
-        "colors": ["Midnight Black", "Forest Green", "Lavender Purple"],
-        "storage": ["128GB", "256GB", "512GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 156
-    },
-    {
-        "id": 36,
-        "name": "Xiaomi Redmi Note 13",
-        "brand": "Xiaomi",
-        "price": 249,
-        "original_price": 299,
-        "discount": 17,
-        "rating": 4.3,
-        "reviews": 1876,
-        "image": "https://i.pinimg.com/1200x/db/8f/0a/db8f0ac60f487fe988b2756ac0df6d8d.jpg",
-        "colors": ["Midnight Black", "Mint Green", "Ice Blue"],
-        "storage": ["128GB", "256GB"],
-        "is_new": True,
-        "featured": False,
-        "stock": 189
-    },
+@app.errorhandler(429)
+def handle_ratelimit_error(e):
+    if request.is_json or request.path.startswith("/api/"):
+        return jsonify({
+            "success": False,
+            "error": "Rate limit exceeded",
+            "message": str(e.description)
+        }), 429
+    return render_template("429.html", message=e.description), 429
 
-    # ========== GOOGLE PIXEL PRODUCTS (8 products) ==========
-    {
-        "id": 37,
-        "name": "Google Pixel 8 Pro",
-        "brand": "Google",
-        "price": 999,
-        "original_price": 1099,
-        "discount": 9,
-        "rating": 4.8,
-        "reviews": 1456,
-        "image": "https://i.pinimg.com/736x/a3/33/98/a333985f50d57792b712cd42fd2270b2.jpg",
-        "colors": ["Obsidian", "Porcelain", "Bay"],
-        "storage": ["128GB", "256GB", "512GB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 56
-    },
-    {
-        "id": 38,
-        "name": "Google Pixel 8",
-        "brand": "Google",
-        "price": 699,
-        "original_price": 799,
-        "discount": 13,
-        "rating": 4.7,
-        "reviews": 1234,
-        "image": "https://i.pinimg.com/1200x/ad/23/6a/ad236a8427fb0b6ed1aa3d8c17ec2a16.jpg",
-        "colors": ["Obsidian", "Hazel", "Rose"],
-        "storage": ["128GB", "256GB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 78
-    },
-    {
-        "id": 39,
-        "name": "Google Pixel 7 Pro",
-        "brand": "Google",
-        "price": 599,
-        "original_price": 899,
-        "discount": 33,
-        "rating": 4.7,
-        "reviews": 2345,
-        "image": "https://i.pinimg.com/736x/24/69/6f/24696ff09256256d3da7eab858891a74.jpg",
-        "colors": ["Obsidian", "Snow", "Hazel"],
-        "storage": ["128GB", "256GB", "512GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 45
-    },
-    {
-        "id": 40,
-        "name": "Google Pixel 7",
-        "brand": "Google",
-        "price": 449,
-        "original_price": 599,
-        "discount": 25,
-        "rating": 4.6,
-        "reviews": 1876,
-        "image": "https://i.pinimg.com/1200x/88/f7/49/88f749ef1650a88de20e3e87d1d774c3.jpg",
-        "colors": ["Obsidian", "Snow", "Lemongrass"],
-        "storage": ["128GB", "256GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 67
-    },
-    {
-        "id": 41,
-        "name": "Google Pixel Fold",
-        "brand": "Google",
-        "price": 1699,
-        "original_price": 1799,
-        "discount": 6,
-        "rating": 4.7,
-        "reviews": 543,
-        "image": "https://i.pinimg.com/736x/0e/0d/a4/0e0da4d18aee0b4b612a07bbb7dd4df2.jpg",
-        "colors": ["Obsidian", "Porcelain"],
-        "storage": ["256GB", "512GB"],
-        "is_new": True,
-        "featured": True,
-        "stock": 23
-    },
-    {
-        "id": 42,
-        "name": "Google Pixel 7a",
-        "brand": "Google",
-        "price": 399,
-        "original_price": 499,
-        "discount": 20,
-        "rating": 4.5,
-        "reviews": 987,
-        "image": "https://i.pinimg.com/1200x/aa/d5/67/aad567c4c481909bee3ce3837550a7db.jpg",
-        "colors": ["Charcoal", "Snow", "Sea", "Coral"],
-        "storage": ["128GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 89
-    },
-    {
-        "id": 43,
-        "name": "Google Pixel 6 Pro",
-        "brand": "Google",
-        "price": 499,
-        "original_price": 899,
-        "discount": 44,
-        "rating": 4.5,
-        "reviews": 3456,
-        "image": "https://i.pinimg.com/1200x/ad/23/6a/ad236a8427fb0b6ed1aa3d8c17ec2a16.jpg",
-        "colors": ["Stormy Black", "Cloudy White", "Sorta Sunny"],
-        "storage": ["128GB", "256GB", "512GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 34
-    },
-    {
-        "id": 44,
-        "name": "Google Pixel 6a",
-        "brand": "Google",
-        "price": 349,
-        "original_price": 449,
-        "discount": 22,
-        "rating": 4.4,
-        "reviews": 2345,
-        "image": "https://i.pinimg.com/1200x/88/f7/49/88f749ef1650a88de20e3e87d1d774c3.jpg",
-        "colors": ["Charcoal", "Chalk", "Sage"],
-        "storage": ["128GB"],
-        "is_new": False,
-        "featured": False,
-        "stock": 78
-    }
-]
+
+# ==========================================
+# CART HELPERS
+# ==========================================
 def get_cart():
-    if 'cart' not in session:
-        session['cart'] = []
-    return session['cart']
+    if "cart" not in session:
+        session["cart"] = []
+    return session["cart"]
+
+
 def save_cart(cart):
-    session['cart'] = cart
+    session["cart"] = cart
     session.modified = True
+
+
+# ==========================================
+# FRONT LOGIN GUARD
+# ==========================================
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'users' not in session:
-            flash('Please log in to access this page', 'warning')
-            return redirect(url_for('login'))
+        if "users" not in session:
+            flash("Please log in to access this page", "warning")
+            return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated_function
+
+
+# ==========================================
+# CONTEXT PROCESSORS
+# ==========================================
 @app.context_processor
 def utility_processor():
     def cart_count():
         cart = get_cart()
-        return sum(item['quantity'] for item in cart)
+        return sum(item["quantity"] for item in cart)
+
     def is_logged_in():
-        return 'users' in session
+        return "users" in session
+
     def current_user():
-        return session.get('users', {})
+        return session.get("users", {})
+
     def get_brands():
-        return sorted(set(p['brand'] for p in PRODUCTS))
-    return dict(cart_count=cart_count, is_logged_in=is_logged_in, current_user=current_user, get_brands=get_brands)
-@app.route('/')
-@app.route('/index')
-def index():
-    featured_products = [p for p in PRODUCTS if p.get('featured')][:8]
-    new_products = [p for p in PRODUCTS if p.get('is_new')][:8]
-    brands = sorted(set(p['brand'] for p in PRODUCTS))
-    return render_template('front/index.html', featured_products=featured_products, new_products=new_products,
-                           all_products=PRODUCTS, brands=brands)
-@app.route('/shop')
-def shop():
-    brand = request.args.get('brand', '')
-    search = request.args.get('search', '')
-    sort = request.args.get('sort', 'default')
-    products = PRODUCTS.copy()
+        try:
+            cats = Category.query.order_by(Category.name.asc()).all()
+            if cats:
+                return [c.name for c in cats]
+        except Exception:
+            pass
+        return []
 
-    # Filter by brand
-    if brand:
-        products = [p for p in products if p['brand'].lower() == brand.lower()]
-    # Filter by search
-    if search:
-        products = [p for p in products if search.lower() in p['name'].lower() or search.lower() in p['brand'].lower()]
-    # Sort products
-    if sort == 'price_low':
-        products.sort(key=lambda x: x['price'])
-    elif sort == 'price_high':
-        products.sort(key=lambda x: x['price'], reverse=True)
-    elif sort == 'rating':
-        products.sort(key=lambda x: x['rating'], reverse=True)
-    elif sort == 'newest':
-        products.sort(key=lambda x: x['is_new'], reverse=True)
+    def get_categories():
+        try:
+            return Category.query.order_by(Category.name.asc()).all()
+        except Exception:
+            return []
 
-    # Get all unique brands
-    brands = sorted(set(p['brand'] for p in PRODUCTS))
-
-    return render_template('front/shop.html',
-                           products=products,
-                           brands=brands,
-                           selected_brand=brand,
-                           search_query=search,
-                           selected_sort=sort)
-@app.route("/product/<int:product_id>")
-def product_detail(product_id):
-    product = next(
-        (p for p in PRODUCTS if p["id"] == product_id),
-        None
+    return dict(
+        cart_count=cart_count,
+        is_logged_in=is_logged_in,
+        current_user=current_user,
+        get_brands=get_brands,
+        get_categories=get_categories,
+        get_image_url=get_image_url
     )
 
+
+# ==========================================
+# FRONT STORE ROUTES (CONNECTED TO DATABASE)
+# ==========================================
+@app.route("/")
+@app.route("/index")
+def index():
+    categories = Category.query.order_by(Category.name.asc()).all()
+    all_products = Product.query.order_by(Product.id.desc()).all()
+    featured_products = all_products[:8]
+    new_products = all_products[:8]
+    brands = [c.name for c in categories]
+
+    return render_template(
+        "front/index.html",
+        featured_products=featured_products,
+        new_products=new_products,
+        all_products=all_products,
+        brands=brands,
+        categories=categories
+    )
+
+
+@app.route("/shop")
+def shop():
+    brand = request.args.get("brand", "").strip()
+    category_id = request.args.get("category_id", type=int)
+    search = request.args.get("search", "").strip()
+    sort = request.args.get("sort", "default")
+
+    query = Product.query
+
+    if category_id:
+        query = query.filter(Product.category_id == category_id)
+    elif brand and brand.lower() != "all":
+        cat = Category.query.filter(Category.name.ilike(brand)).first()
+        if cat:
+            query = query.filter(Product.category_id == cat.id)
+
+    if search:
+        query = query.filter(
+            (Product.name.ilike(f"%{search}%")) |
+            (Product.description.ilike(f"%{search}%"))
+        )
+
+    if sort == "price_low":
+        query = query.order_by(Product.price.asc())
+    elif sort == "price_high":
+        query = query.order_by(Product.price.desc())
+    elif sort == "newest":
+        query = query.order_by(Product.id.desc())
+    elif sort == "name":
+        query = query.order_by(Product.name.asc())
+    else:
+        query = query.order_by(Product.id.desc())
+
+    products = query.all()
+    categories = Category.query.order_by(Category.name.asc()).all()
+    brands = [c.name for c in categories]
+
+    return render_template(
+        "front/shop.html",
+        products=products,
+        brands=brands,
+        categories=categories,
+        selected_brand=brand,
+        selected_category=category_id,
+        search_query=search,
+        selected_sort=sort
+    )
+
+
+@app.route("/product/<int:product_id>")
+def product_detail(product_id):
+    product = db.session.get(Product, product_id)
     if not product:
         flash("Product not found", "error")
         return redirect(url_for("shop"))
 
-    # Related products
-    related = [
-                  p for p in PRODUCTS
-                  if p["brand"] == product["brand"] and p["id"] != product_id
-              ][:4]
+    related = Product.query.filter(
+        Product.category_id == product.category_id,
+        Product.id != product.id
+    ).limit(4).all()
 
     return render_template(
         "front/product-detail.html",
         product=product,
         related=related
     )
-@app.route('/add-to-cart', methods=['POST'])
-def add_to_cart():
-    product_id = int(request.form.get('product_id'))
-    quantity = int(request.form.get('quantity', 1))
-    color = request.form.get('color', '')
-    storage = request.form.get('storage', '')
 
-    product = next((p for p in PRODUCTS if p['id'] == product_id), None)
+
+@app.route("/add-to-cart", methods=["POST"])
+@limiter.limit("60 per minute")
+def add_to_cart():
+    try:
+        product_id = int(request.form.get("product_id"))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Invalid product ID"})
+
+    quantity = max(1, int(request.form.get("quantity", 1)))
+    color = request.form.get("color", "")
+    storage = request.form.get("storage", "")
+    buy_now = request.form.get("buy_now") == "1"
+
+    product = db.session.get(Product, product_id)
+
     if not product:
-        return jsonify({'success': False, 'message': 'Product not found'})
+        return jsonify({"success": False, "message": "Product not found"})
+
+    if product.stock <= 0:
+        return jsonify({"success": False, "message": "Sorry, this product is currently out of stock!"})
 
     cart = get_cart()
 
-    # Check if item already in cart with same options
+    # If buy now, unselect other items so this product is checked out exclusively
+    if buy_now:
+        for item in cart:
+            item["selected"] = False
+
     for item in cart:
-        if item['product_id'] == product_id and item.get('color') == color and item.get('storage') == storage:
-            item['quantity'] += quantity
+        if item["product_id"] == product_id and item.get("color") == color and item.get("storage") == storage:
+            if item["quantity"] + quantity > product.stock:
+                return jsonify({"success": False, "message": f"Only {product.stock} units available in stock!"})
+            item["quantity"] += quantity
+            item["selected"] = True
             save_cart(cart)
-            return jsonify({'success': True, 'cart_count': sum(i['quantity'] for i in cart),
-                            'message': f'Added another {quantity} {product["name"]} to cart'})
+            return jsonify({
+                "success": True,
+                "cart_count": sum(i["quantity"] for i in cart),
+                "message": f"Updated quantity for {product.name}"
+            })
 
     cart.append({
-        'product_id': product_id,
-        'name': product['name'],
-        'price': product['price'],
-        'image': product['image'],
-        'quantity': quantity,
-        'color': color,
-        'storage': storage
+        "product_id": product_id,
+        "name": product.name,
+        "price": float(product.price),
+        "image": product.image,
+        "quantity": quantity,
+        "color": color,
+        "storage": storage,
+        "selected": True
     })
     save_cart(cart)
-
-    return jsonify({'success': True, 'cart_count': sum(i['quantity'] for i in cart),
-                    'message': f'{product["name"]} added to cart'})
-@app.route('/cart')
-@login_required
-def cart():
-    cart = get_cart()
-    subtotal = sum(item['price'] * item['quantity'] for item in cart)
-    shipping = 0 if subtotal > 500 else 15
-    tax = subtotal * 0.1
-    total = subtotal + shipping + tax
-
-    return render_template('front/cart.html', cart=cart, subtotal=subtotal, shipping=shipping, tax=tax, total=total)
-@app.route('/order-confirmation')
-@login_required
-def order_confirmation():
-    order = session.get('last_order')
-
-    if not order:
-        return redirect(url_for('index'))
-
-    return render_template(
-        'front/order-confirmation.html',
-        order=order
-    )
-@app.route('/update-cart', methods=['POST'])
-def update_cart():
-    data = request.get_json()
-    cart = get_cart()
-    action = data.get('action')
-    index = int(data.get('index'))
-    if 0 <= index < len(cart):
-
-        if action == 'increase':
-
-            cart[index]['quantity'] += 1
-
-        elif action == 'decrease':
-
-            if cart[index]['quantity'] > 1:
-                cart[index]['quantity'] -= 1
-
-        elif action == 'remove':
-
-            cart.pop(index)
-
-    save_cart(cart)
-
-    subtotal = sum(
-        item['price'] * item['quantity']
-        for item in cart
-    )
-
-    shipping = 0 if subtotal > 500 else 15
-    tax = subtotal * 0.10
-    total = subtotal + shipping + tax
 
     return jsonify({
-        'success': True,
-        'subtotal': subtotal,
-        'shipping': shipping,
-        'tax': tax,
-        'total': total
+        "success": True,
+        "cart_count": sum(i["quantity"] for i in cart),
+        "message": f"{product.name} added to cart"
     })
 
-@app.route('/checkout')
+
+@app.route("/cart")
+@login_required
+def cart():
+    cart_items = get_cart()
+    for item in cart_items:
+        if "selected" not in item:
+            item["selected"] = True
+
+    selected_items = [item for item in cart_items if item.get("selected", True)]
+    selected_count = len(selected_items)
+    subtotal = sum(item["price"] * item["quantity"] for item in selected_items)
+    shipping = 0 if subtotal > 500 else (0 if subtotal == 0 else 15)
+    tax = round(subtotal * 0.1, 2)
+    total = round(subtotal + shipping + tax, 2)
+
+    return render_template(
+        "front/cart.html",
+        cart=cart_items,
+        selected_count=selected_count,
+        subtotal=subtotal,
+        shipping=shipping,
+        tax=tax,
+        total=total
+    )
+
+
+@app.route("/cart/select", methods=["POST"])
+@login_required
+@limiter.limit("60 per minute")
+def select_cart_items():
+    data = request.get_json(silent=True) or request.form.to_dict()
+    selected_indices = data.get("selected_indices", [])
+    cart_items = get_cart()
+
+    try:
+        sel_set = set(int(i) for i in selected_indices)
+    except (ValueError, TypeError):
+        sel_set = set()
+
+    for idx, item in enumerate(cart_items):
+        item["selected"] = (idx in sel_set)
+
+    save_cart(cart_items)
+
+    selected_items = [item for item in cart_items if item.get("selected", True)]
+    selected_count = len(selected_items)
+    subtotal = sum(item["price"] * item["quantity"] for item in selected_items)
+    shipping = 0 if subtotal > 500 else (0 if subtotal == 0 else 15)
+    tax = round(subtotal * 0.1, 2)
+    total = round(subtotal + shipping + tax, 2)
+
+    return jsonify({
+        "success": True,
+        "selected_count": selected_count,
+        "subtotal": subtotal,
+        "shipping": shipping,
+        "tax": tax,
+        "total": total
+    })
+
+
+@app.route("/cart/select-all", methods=["POST"])
+@login_required
+@limiter.limit("60 per minute")
+def select_all_cart_items():
+    data = request.get_json(silent=True) or request.form.to_dict()
+    select_all = data.get("select_all", True)
+    if isinstance(select_all, str):
+        select_all = select_all.lower() in ("true", "1")
+
+    cart_items = get_cart()
+    for item in cart_items:
+        item["selected"] = bool(select_all)
+
+    save_cart(cart_items)
+
+    selected_items = [item for item in cart_items if item.get("selected", True)]
+    selected_count = len(selected_items)
+    subtotal = sum(item["price"] * item["quantity"] for item in selected_items)
+    shipping = 0 if subtotal > 500 else (0 if subtotal == 0 else 15)
+    tax = round(subtotal * 0.1, 2)
+    total = round(subtotal + shipping + tax, 2)
+
+    return jsonify({
+        "success": True,
+        "selected_count": selected_count,
+        "subtotal": subtotal,
+        "shipping": shipping,
+        "tax": tax,
+        "total": total
+    })
+
+
+@app.route("/order-confirmation")
+@login_required
+def order_confirmation():
+    order = session.get("last_order")
+    if not order:
+        return redirect(url_for("index"))
+
+    return render_template(
+        "front/order-confirmation.html",
+        order=order,
+        order_id=order.get("order_id")
+    )
+
+
+@app.route("/update-cart", methods=["POST"])
+@limiter.limit("60 per minute")
+def update_cart():
+    data = request.get_json(silent=True) or request.form.to_dict()
+    cart_items = get_cart()
+    action = data.get("action")
+    index = data.get("index")
+    selected_indices = data.get("selected_indices")
+
+    if selected_indices is not None and isinstance(selected_indices, list):
+        try:
+            sel_set = set(int(i) for i in selected_indices)
+            for idx, itm in enumerate(cart_items):
+                itm["selected"] = (idx in sel_set)
+        except (ValueError, TypeError):
+            pass
+
+    if index is not None:
+        try:
+            index = int(index)
+            if 0 <= index < len(cart_items):
+                if action == "increase":
+                    cart_items[index]["quantity"] += 1
+                elif action == "decrease":
+                    if cart_items[index]["quantity"] > 1:
+                        cart_items[index]["quantity"] -= 1
+                    else:
+                        cart_items.pop(index)
+                elif action == "remove":
+                    cart_items.pop(index)
+        except ValueError:
+            pass
+
+    save_cart(cart_items)
+
+    selected_items = [item for item in cart_items if item.get("selected", True)]
+    selected_count = len(selected_items)
+    subtotal = sum(item["price"] * item["quantity"] for item in selected_items)
+    shipping = 0 if subtotal > 500 else (0 if subtotal == 0 else 15)
+    tax = round(subtotal * 0.1, 2)
+    total = round(subtotal + shipping + tax, 2)
+
+    return jsonify({
+        "success": True,
+        "selected_count": selected_count,
+        "subtotal": subtotal,
+        "shipping": shipping,
+        "tax": tax,
+        "total": total
+    })
+
+
+@app.route("/checkout", methods=["GET", "POST"])
 @login_required
 def checkout():
-    cart = get_cart()
-    if not cart:
-        flash('Your cart is empty', 'warning')
-        return redirect(url_for('shop'))
+    cart_items = get_cart()
+    if not cart_items:
+        flash("Your cart is empty", "warning")
+        return redirect(url_for("shop"))
 
-    subtotal = sum(item['price'] * item['quantity'] for item in cart)
-    shipping = 0 if subtotal > 500 else 15
-    tax = subtotal * 0.1
-    total = subtotal + shipping + tax
+    if request.method == "POST":
+        selected_indices = request.form.getlist("selected_items")
+        if not selected_indices:
+            data = request.get_json(silent=True) or {}
+            selected_indices = data.get("selected_indices", [])
+        if selected_indices:
+            try:
+                sel_set = set(int(i) for i in selected_indices)
+                for idx, itm in enumerate(cart_items):
+                    itm["selected"] = (idx in sel_set)
+                save_cart(cart_items)
+            except (ValueError, TypeError):
+                pass
 
-    return render_template('front/checkout.html', subtotal=subtotal, shipping=shipping, tax=tax, total=total)
+    selected_items = [item for item in cart_items if item.get("selected", True)]
+    if not selected_items:
+        flash("Please select at least 1 product from your cart to checkout.", "warning")
+        return redirect(url_for("cart"))
 
-@app.route('/place-order', methods=['POST'])
+    subtotal = sum(item["price"] * item["quantity"] for item in selected_items)
+    shipping = 0 if subtotal > 500 else (0 if subtotal == 0 else 15)
+    tax = round(subtotal * 0.1, 2)
+    total = round(subtotal + shipping + tax, 2)
+
+    return render_template(
+        "front/checkout.html",
+        items=selected_items,
+        subtotal=subtotal,
+        shipping=shipping,
+        tax=tax,
+        total=total
+    )
+
+
+@app.route("/place-order", methods=["POST"])
 @login_required
+@limiter.limit("10 per minute")
 def place_order():
     try:
-        fullname = request.form.get('fullname')
-        email = request.form.get('email')
-        phone = request.form.get('phone')
-        address = request.form.get('address')
-        city = request.form.get('city')
-        payment_method = request.form.get('payment')
+        fullname = request.form.get("fullname", "").strip()
+        email = request.form.get("email", "").strip()
+        phone = request.form.get("phone", "").strip()
+        address = request.form.get("address", "").strip()
+        city = request.form.get("city", "").strip()
+        payment_method = request.form.get("payment", "Cash on Delivery")
 
-        if not all([fullname, email, phone, address, city, payment_method]):
-            flash('Please fill in all required fields', 'danger')
-            return redirect(url_for('checkout'))
+        if not all([fullname, email, phone, address, city]):
+            flash("Please fill in all required fields", "danger")
+            return redirect(url_for("checkout"))
 
-        cart = get_cart()
-        if not cart:
-            flash('Cart is empty', 'warning')
-            return redirect(url_for('cart'))
-        order_id = 'ORD-' + str(uuid.uuid4())[:8].upper()
-        subtotal = sum(
-            item['price'] * item['quantity']
-            for item in cart
-        )
-        shipping = 0 if subtotal > 500 else 15
-        tax = subtotal * 0.1
-        total = subtotal + shipping + tax
+        cart_items = get_cart()
+        if not cart_items:
+            flash("Cart is empty", "warning")
+            return redirect(url_for("cart"))
+
+        selected_items = [item for item in cart_items if item.get("selected", True)]
+        if not selected_items:
+            flash("Please select at least 1 product to checkout.", "warning")
+            return redirect(url_for("cart"))
+
+        order_id = "ORD-" + str(uuid.uuid4())[:8].upper()
+        subtotal = sum(item["price"] * item["quantity"] for item in selected_items)
+        shipping = 0 if subtotal > 500 else (0 if subtotal == 0 else 15)
+        tax = round(subtotal * 0.1, 2)
+        total = round(subtotal + shipping + tax, 2)
 
         order_data = {
-
-            'order_id': order_id,
-
-            'order_date':
-                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-
-            'customer_name': fullname,
-            'customer_email': email,
-            'customer_phone': phone,
-            'shipping_address': address,
-            'city': city,
-            'payment_method': payment_method,
-            'items': cart,
-            'subtotal': subtotal,
-            'shipping': shipping,
-            'tax': tax,
-            'total': total,
-            'status': 'Pending'
+            "order_id": order_id,
+            "order_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "customer_name": fullname,
+            "customer_email": email,
+            "customer_phone": phone,
+            "shipping_address": address,
+            "city": city,
+            "payment_method": payment_method,
+            "items": list(selected_items),
+            "subtotal": subtotal,
+            "shipping": shipping,
+            "tax": tax,
+            "total": total,
+            "status": "Pending"
         }
 
-        user_email = session['users']['email']
-        if 'orders' not in USERS[user_email]:
-            USERS[user_email]['orders'] = []
-        USERS[user_email]['orders'].append(order_data)
-        session['last_order'] = order_data
+        # Decrement stock in database for selected items only
+        for item in selected_items:
+            prod_id = item.get("product_id")
+            if prod_id:
+                p = db.session.get(Product, prod_id)
+                if p:
+                    p.stock = max(0, p.stock - item.get("quantity", 1))
 
-        # =========================
-        # SEND PRODUCT IMAGES
-        # =========================
+        # Save order into database
+        try:
+            db_order = Order(
+                order_id=order_id,
+                customer_name=fullname,
+                customer_email=email,
+                customer_phone=phone,
+                shipping_address=address,
+                city=city,
+                payment_method=payment_method,
+                payment_status="Paid" if payment_method.lower() in ("card", "credit card", "stripe") else "Pending",
+                status="Pending",
+                subtotal=subtotal,
+                shipping=shipping,
+                tax=tax,
+                total=total,
+                items=list(selected_items)
+            )
+            db.session.add(db_order)
+            db.session.commit()
+        except Exception as db_err:
+            print("DB order save notice:", db_err)
+            db.session.commit()
 
-        for item in cart:
-            image_url = item.get('image')
-            caption = f"""
-                 {item['name']}
-            """
+        user_email = session["users"]["email"]
+        if user_email not in USERS:
+            USERS[user_email] = {
+                "email": user_email,
+                "name": session["users"].get("name", fullname),
+                "orders": []
+            }
+        if "orders" not in USERS[user_email]:
+            USERS[user_email]["orders"] = []
+
+        USERS[user_email]["orders"].append(order_data)
+        session["last_order"] = order_data
+
+        # Send product photos via telegram if available for selected items
+        for item in selected_items:
+            image_url = item.get("image")
+            caption = f"{item['name']}"
             if image_url:
-                send_product_photo(
-                    image_url,
-                    caption
-                )
+                send_product_photo(image_url, caption)
+
         products_text = ""
-        for item in cart:
+        for item in selected_items:
             products_text += f"""
         📦 <b>Phone:</b> {item['name']}
         🔢 <b>Qty:</b> {item['quantity']}
         💲 <b>Price:</b> ${item['price']:.2f}
         """
+
         telegram_message = f"""
         🛒 <b>NEW ORDER</b>
         ━━━━━━━━━━━━━━
@@ -1081,255 +635,270 @@ def place_order():
         💵 <b>TOTAL:</b> ${total:.2f}
         """
         send_telegram_message(telegram_message)
-        session.pop('cart', None)
-        flash(
-            f'Order {order_id} placed successfully!',
-            'success'
-        )
-        return redirect(
-            url_for('order_confirmation')
-        )
+
+        # Remove ONLY the selected items from the cart, keeping unselected items in cart
+        remaining_cart = [item for item in cart_items if not item.get("selected", True)]
+        for item in remaining_cart:
+            item["selected"] = True
+        save_cart(remaining_cart)
+
+        flash(f"Order {order_id} placed successfully!", "success")
+        return redirect(url_for("order_confirmation"))
+
     except Exception as e:
+        print("Place order error:", e)
+        flash("Order failed. Please try again.", "danger")
+        return redirect(url_for("checkout"))
 
-        print(e)
 
-        flash(
-            'Order failed.',
-            'danger'
-        )
-
-        return redirect(
-            url_for('checkout')
-        )
-
-@app.route('/my-orders')
+@app.route("/my-orders")
 @login_required
 def my_orders():
-    user_email = session.get('users', {}).get('email')
-
+    user_email = session.get("users", {}).get("email")
     if not user_email:
-        return redirect(url_for('login'))
+        return redirect(url_for("login"))
 
-    user_data = USERS.get(user_email, {})
-
-    orders = user_data.get('orders', [])
-
-    if not isinstance(orders, list):
+    # Load persistent orders from DB
+    orders = []
+    try:
+        db_orders = Order.query.filter_by(customer_email=user_email).order_by(Order.id.desc()).all()
+        orders = [o.to_dict() for o in db_orders]
+    except Exception:
         orders = []
 
-    for order in orders:
+    # Merge any in-memory orders if not in DB yet
+    user_data = USERS.get(user_email, {})
+    mem_orders = user_data.get("orders", [])
+    existing_ids = {o.get("order_id") for o in orders}
+    for mo in mem_orders:
+        if isinstance(mo, dict) and mo.get("order_id") not in existing_ids:
+            orders.append(mo)
+            existing_ids.add(mo.get("order_id"))
 
+    for order in orders:
         if not isinstance(order, dict):
             continue
+        if "items" not in order or not isinstance(order["items"], list):
+            order["items"] = []
+        order.setdefault("status", "pending")
+        order.setdefault("total", 0)
+        order.setdefault("order_date", "N/A")
+        order.setdefault("shipping_address", "")
+        order.setdefault("city", "")
+        order.setdefault("payment_method", "cash")
 
-        if 'items' not in order:
-            order['items'] = []
+    return render_template("front/my-orders.html", orders=orders)
 
-        if not isinstance(order['items'], list):
-            order['items'] = []
 
-        order.setdefault('status', 'pending')
-        order.setdefault('total', 0)
-        order.setdefault('order_date', 'N/A')
-        order.setdefault('shipping_address', '')
-        order.setdefault('city', '')
-        order.setdefault('payment_method', 'cash')
-
-    return render_template(
-        'front/my-orders.html',
-        orders=orders
-    )
-
-@app.route('/order/<order_id>')
+@app.route("/order/<order_id>")
 @login_required
 def order_detail(order_id):
-    user_email = session['users']['email']
-    user_data = USERS.get(user_email, {})
-    orders = user_data.get('orders', [])
+    user_email = session["users"]["email"]
+    order = None
 
-    # Find the specific order
-    order = next((o for o in orders if o['order_id'] == order_id), None)
+    try:
+        db_order = Order.query.filter_by(order_id=order_id).first()
+        if db_order and (db_order.customer_email == user_email or session.get("user_role") == "admin"):
+            order = db_order.to_dict()
+    except Exception:
+        order = None
 
     if not order:
-        flash('Order not found', 'error')
-        return redirect(url_for('my_orders'))
+        user_data = USERS.get(user_email, {})
+        orders = user_data.get("orders", [])
+        order = next((o for o in orders if o.get("order_id") == order_id), None)
+        if not order:
+            last_order = session.get("last_order")
+            if last_order and last_order.get("order_id") == order_id:
+                order = last_order
 
-    return render_template('front/order-detail.html', order=order)
+    if not order:
+        flash("Order not found", "error")
+        return redirect(url_for("my_orders"))
 
-@app.route('/login', methods=['GET', 'POST'])
+    return render_template("front/order-detail.html", order=order)
+
+
+# ==========================================
+# FRONT USER AUTHENTICATION
+# ==========================================
+@app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute; 25 per hour")
 def login():
-    if request.method == 'POST':
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "").strip()
 
-        email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '').strip()
-
-        user = USERS.get(email)
-
-        if user and user['password'] == password:
-            session['users'] = {
-                'email': user['email'],
-                'name': user['name']
+        # 1. Check database User model
+        db_user = User.query.filter_by(email=email).first()
+        if db_user and check_password_hash(db_user.password, password):
+            session["users"] = {
+                "id": db_user.id,
+                "email": db_user.email,
+                "name": db_user.name,
+                "role": db_user.role
             }
+            if db_user.role == "admin":
+                session["user_id"] = db_user.id
+                session["user_name"] = db_user.name
+                session["user_email"] = db_user.email
+                session["user_role"] = db_user.role
+                session["logged_in"] = True
 
-            flash('Login successful', 'success')
-            return redirect(url_for('index'))
+            flash("Login successful!", "success")
+            return redirect(url_for("index"))
 
-        flash('Invalid email or password', 'error')
+        # 2. Check USERS memory store
+        user = USERS.get(email)
+        if user and user.get("password") == password:
+            session["users"] = {
+                "email": user["email"],
+                "name": user["name"],
+                "role": user.get("role", "user")
+            }
+            flash("Login successful!", "success")
+            return redirect(url_for("index"))
 
-    return render_template('front/login.html')
+        flash("Invalid email or password", "error")
 
-@app.route('/logout')
+    return render_template("front/login.html")
+
+
+@app.route("/logout")
 def logout():
-    session.pop('users', None)
-    flash('You have been logged out', 'info')
-    return redirect(url_for('index'))
+    session.pop("users", None)
+    flash("You have been logged out", "info")
+    return redirect(url_for("index"))
 
-@app.route('/create-user', methods=['GET', 'POST'])
+
+@app.route("/create-user", methods=["GET", "POST"])
+@limiter.limit("5 per minute; 20 per hour")
 def create_user():
-    if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password')
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
 
-        # Validation
         if not name or not email or not password:
-            flash('All fields are required', 'error')
-            return render_template('front/create-user.html')
+            flash("All fields are required", "error")
+            return render_template("front/create-user.html")
 
         if password != confirm_password:
-            flash('Passwords do not match', 'error')
-            return render_template('front/create-user.html')
+            flash("Passwords do not match", "error")
+            return render_template("front/create-user.html")
 
         if len(password) < 6:
-            flash('Password must be at least 6 characters', 'error')
-            return render_template('front/create-user.html')
+            flash("Password must be at least 6 characters", "error")
+            return render_template("front/create-user.html")
 
-        if email in USERS:
-            flash('Email already registered. Please login instead.', 'error')
-            return render_template('front/create-user.html')
+        if email in USERS or User.query.filter_by(email=email).first():
+            flash("Email already registered. Please login instead.", "error")
+            return render_template("front/create-user.html")
 
-        # Create new users
-        from datetime import datetime
+        # Save to database
+        hashed_password = generate_password_hash(password)
+        new_user = User(
+            name=name,
+            email=email,
+            password=hashed_password,
+            role="user"
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        # Save to memory store
         USERS[email] = {
-            'email': email,
-            'password': password,
-            'name': name,
-            'created_at': datetime.now().strftime('%Y-%m-%d'),
-            'orders': []
+            "email": email,
+            "password": password,
+            "name": name,
+            "created_at": datetime.now().strftime("%Y-%m-%d"),
+            "orders": []
         }
 
         # Auto-login after registration
-        session['users'] = {
-            'email': email,
-            'name': name
+        session["users"] = {
+            "id": new_user.id,
+            "email": email,
+            "name": name,
+            "role": "user"
         }
 
-        flash(f'Account created successfully! Welcome {name}!', 'success')
-        return redirect(url_for('index'))
+        flash(f"Account created successfully! Welcome, {name}!", "success")
+        return redirect(url_for("index"))
 
-    return render_template('front/create-user.html')
+    return render_template("front/create-user.html")
 
-@app.route('/forget-pw', methods=['GET', 'POST'])
+
+@app.route("/forget-pw", methods=["GET", "POST"])
+@limiter.limit("3 per minute; 10 per hour")
 def forget_password():
-    if request.method == 'POST':
-        email = request.form.get('email')
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
 
-        if email in USERS:
-            # In a real app, send password reset email
-            # For demo, we'll just show a success message
-            flash(f'Password reset link has been sent to {email} (Demo: Use password "demo123" to login)', 'success')
-
-            # For demo purposes, we can also show the current password
-            # In production, NEVER do this - send a reset link via email only
-            if email == "demo@mobishop.com":
-                flash('Demo account password is: demo123', 'info')
+        db_user = User.query.filter_by(email=email).first()
+        if email in USERS or db_user:
+            flash(f"Password reset link has been sent to {email}", "success")
         else:
-            flash('No account found with that email address', 'error')
+            flash("No account found with that email address", "error")
 
-    return render_template('front/forget-pw.html')
+    return render_template("front/forget-pw.html")
 
-@app.route('/profile')
+
+@app.route("/profile")
 @login_required
 def profile():
-    user = session.get('users')
-    user_data = USERS.get(user['email'], {})
-    return render_template('front/profile.html', user=user_data)
+    user = session.get("users", {})
+    user_data = USERS.get(user.get("email"), user)
+    return render_template("front/profile.html", user=user_data)
+
+
+# ==========================================
+# ADMIN STORE REDIRECTS (FOR SEAMLESS NAVIGATION)
+# ==========================================
 @app.route("/admin/product")
-def admin_product():
-    module = "products"
-    return render_template("admin/product/products.html", module="products")
+@app.route("/admin/products")
+@admin_required
+def admin_product_redirect():
+    return redirect(url_for("admin.admin_products"))
+
 
 @app.route("/admin/Phone")
-def admin_Phone():
-    module = "Phone"
-    return render_template("admin/category/index.html", module="Phone")
+@app.route("/admin/category")
+@app.route("/admin/categories")
+@admin_required
+def admin_category_redirect():
+    return redirect(url_for("admin.admin_categories"))
 
-@app.route("/admin/Phone/all")
-def admin_Phone_all():
-    return render_template("admin/Phone/all.html", module="all")
 
-@app.route("/admin/Phone/Add")
-def admin_Phone_Add():
-    return render_template("admin/Phone/Add.html", module="add")
+# Legacy aliases
+admin_product = admin_product_redirect
+admin_category = admin_category_redirect
+admin_Phone = admin_category_redirect
 
-@app.route("/admin/Phone/brand")
-def admin_Phone_brand():
-    return render_template("admin/Phone/brand.html", module="brand")
 
 @app.route("/admin/orders")
+@admin_required
 def admin_orders():
-    module = "orders"
-    return render_template("admin/order/orders.html", module="orders")
+    return redirect(url_for("admin.admin_orders"))
+
+
 # ==========================================
-# USER IMAGE
+# UPLOADS & STATIC SERVING
 # ==========================================
+@app.route("/uploads/<folder>/<path:filename>")
+def uploaded_file(folder, filename):
+    safe_folder = os.path.basename(folder)
+    folder_path = os.path.join(app.root_path, "static", "uploads", safe_folder)
+    if not os.path.exists(folder_path):
+        folder_path = os.path.join(app.root_path, "uploads", safe_folder)
+    return send_from_directory(folder_path, os.path.basename(filename))
+
 
 @app.route("/uploads/users/<path:filename>")
 def user_image(filename):
+    return uploaded_file("users", filename)
 
-    # ==========================================
-    # USER UPLOAD FOLDER
-    # ==========================================
 
-    user_folder = os.path.join(
-        app.root_path,
-        "uploads",
-        "users"
-    )
-
-    # ==========================================
-    # CLEAN IMAGE PATH
-    # ==========================================
-
-    filename = filename.replace("\\", "/")
-
-    # If database contains:
-    # uploads/users/photo.jpg
-    if filename.startswith("uploads/users/"):
-
-        filename = filename[
-            len("uploads/users/") :
-        ]
-
-    # If database contains:
-    # users/photo.jpg
-    elif filename.startswith("users/"):
-
-        filename = filename[
-            len("users/") :
-        ]
-
-    # Get only filename
-    filename = os.path.basename(filename)
-
-    # ==========================================
-    # SEND IMAGE
-    # ==========================================
-
-    return send_from_directory(
-        user_folder,
-        filename
-    )
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)

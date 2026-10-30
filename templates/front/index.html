@@ -1,29 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Add Product</title>
-   <link rel="stylesheet" href="../../static/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Khemarak_Store - Premium Smartphones & Mobile Tech</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 {% include "./front/Share/navbar.html" %}
+
 {% block content %}
 <div class="container">
+    <!-- Hero Banner -->
     <div class="hero">
         <h1>Welcome to Mark Shop Mobile Technology</h1>
         <p>Get the latest smartphones at unbeatable prices. Free shipping on orders over $500!</p>
-        <a href="{{ url_for('shop') }}" class="btn-primary">Shop Now <i class="fas fa-arrow-right"></i></a>
+        <a href="{{ url_for('shop') }}" class="btn-primary">
+            <span>Shop Now</span> <i class="fas fa-arrow-right"></i>
+        </a>
     </div>
 
+    <!-- Featured Phones -->
     {% if featured_products %}
-    <h2 class="section-title">Featured Phones</h2>
+    <h2 class="section-title">
+        <i class="fas fa-fire text-danger"></i> Featured Phones
+    </h2>
     <div class="product-grid">
         {% for product in featured_products %}
         <div class="product-card">
             {% if product.discount > 0 %}
             <div class="badge discount">-{{ product.discount }}%</div>
             {% endif %}
-            <a href="{{ url_for('product_detail', product_id=product.id) }}">
-                <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image">
+            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-image-wrap">
+                <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&auto=format&fit=crop&q=80';">
             </a>
             <div class="product-info">
                 <div class="product-brand">{{ product.brand }}</div>
@@ -51,8 +63,8 @@
                     <span class="discount-percent">Save {{ product.discount }}%</span>
                     {% endif %}
                 </div>
-                <button class="btn-add" onclick="addToCart({{ product.id }}, 1, '{{ product.colors[0] if product.colors else '' }}', '{{ product.storage[0] if product.storage else '' }}')">
-                    <i class="fas fa-cart-plus"></i> Add to Cart
+                <button type="button" class="btn-add" onclick="addToCart({{ product.id }}, 1, '{{ product.colors[0] if product.colors else '' }}', '{{ product.storage[0] if product.storage else '' }}')">
+                    <i class="fas fa-cart-plus"></i> <span>Add to Cart</span>
                 </button>
             </div>
         </div>
@@ -60,14 +72,17 @@
     </div>
     {% endif %}
 
+    <!-- New Arrivals -->
     {% if new_products %}
-    <h2 class="section-title">New Arrivals</h2>
+    <h2 class="section-title">
+        <i class="fas fa-sparkles text-warning"></i> New Arrivals
+    </h2>
     <div class="product-grid">
         {% for product in new_products[:4] %}
         <div class="product-card">
             <div class="badge new">New</div>
-            <a href="{{ url_for('product_detail', product_id=product.id) }}">
-                <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image">
+            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-image-wrap">
+                <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&auto=format&fit=crop&q=80';">
             </a>
             <div class="product-info">
                 <div class="product-brand">{{ product.brand }}</div>
@@ -86,7 +101,7 @@
                             {% endif %}
                         {% endfor %}
                     </div>
-                    <span class="reviews">({{ product.reviews }} reviews)</span>
+                    <span class="reviews">({{ product.reviews }})</span>
                 </div>
                 <div class="price">
                     <span class="current-price">${{ product.price }}</span>
@@ -94,8 +109,8 @@
                     <span class="original-price">${{ product.original_price }}</span>
                     {% endif %}
                 </div>
-                <button class="btn-add" onclick="addToCart({{ product.id }})">
-                    <i class="fas fa-cart-plus"></i> Add to Cart
+                <button type="button" class="btn-add" onclick="addToCart({{ product.id }})">
+                    <i class="fas fa-cart-plus"></i> <span>Add to Cart</span>
                 </button>
             </div>
         </div>
@@ -104,6 +119,7 @@
     {% endif %}
 </div>
 {% endblock %}
+
 {% include "./front/Share/footer.html" %}
 </body>
 </html>

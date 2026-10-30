@@ -75,6 +75,7 @@
             action="{{ url_for('admin.delete_user') }}"
             method="POST"
         >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <input
                 type="hidden"

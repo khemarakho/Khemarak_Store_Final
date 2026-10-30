@@ -1,0 +1,322 @@
+{% extends 'admin/master.html' %}
+{% block content %}
+<div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="fa-solid fa-pen-to-square text-primary me-2"></i>Edit Product</h2>
+            <p class="text-muted mb-0">Modify smartphone specs, pricing, thumbnail, and media gallery for <strong>{{
+                    product.name }}</strong></p>
+        </div>
+        <a href="{{ url_for('admin.admin_products') }}" class="btn btn-outline-secondary rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Products
+        </a>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm"
+        role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('admin.admin_product_edit', id=product.id) }}"
+                        enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Row 1: Name & Category -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-7">
+                                <label class="form-label fw-semibold">Product Name <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" name="name" class="form-control form-control-lg"
+                                    value="{{ product.name }}" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-semibold">Category / Brand <span
+                                        class="text-danger">*</span></label>
+                                <select name="category_id" class="form-select form-select-lg" required>
+                                    {% for c in categories %}
+                                    <option value="{{ c.id }}" {{ 'selected' if product.category_id==c.id else '' }}>{{
+                                        c.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Cost, Price, Stock -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Cost Price ($) <small
+                                        class="text-muted">(Internal)</small></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" name="cost" class="form-control" step="0.01" min="0"
+                                        value="{{ '%.2f'|format(product.cost or 0) }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Selling Price ($) <span
+                                        class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" name="price" class="form-control" step="0.01" min="0.01"
+                                        value="{{ '%.2f'|format(product.price) }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Stock Quantity <span
+                                        class="text-danger">*</span></label>
+                                <input type="number" name="stock" class="form-control" min="0"
+                                    value="{{ product.stock }}" required>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Product Description</label>
+                            <textarea name="description" class="form-control"
+                                rows="4">{{ product.description or '' }}</textarea>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Main Thumbnail Image -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold d-block">Main Thumbnail Image</label>
+                            <div class="row g-3 align-items-center">
+                                <div class="col-auto">
+                                    <img id="thumbPreview" src="{{ get_image_url(product.thumbnail, 'products') }}"
+                                        alt="{{ product.name }}" class="rounded-3 border shadow-sm"
+                                        style="width: 110px; height: 110px; object-fit: cover;">
+                                </div>
+                                <div class="col">
+                                    <label class="form-label small text-muted">Upload a new photo to replace current
+                                        thumbnail:</label>
+                                    <input type="file" name="thumbnail" id="thumbnailInput" class="form-control"
+                                        accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Existing Product Gallery Images -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="fa-solid fa-images text-primary me-1"></i> Current Gallery Images ({{
+                                product.images|length }})
+                            </label>
+                            {% if product.images %}
+                            <div class="d-flex flex-wrap gap-3 p-3 bg-light rounded-3 border mb-3">
+                                {% for img in product.images %}
+                                <div class="position-relative d-inline-block shadow-sm">
+                                    <img src="{{ get_image_url(img.name, 'products') }}" class="rounded-3 border"
+                                        style="width: 90px; height: 90px; object-fit: cover;">
+                                    <button type="button"
+                                        class="btn btn-danger btn-sm rounded-circle position-absolute top-0 end-0 translate-middle-y shadow"
+                                        style="width: 24px; height: 24px; padding: 0; font-size: 11px;"
+                                        onclick="document.getElementById('deleteImgForm{{ img.id }}').submit();"
+                                        title="Delete this image">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="text-muted small fst-italic mb-3">No additional gallery images yet.</div>
+                            {% endif %}
+
+                            <!-- Add More Gallery Images -->
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label small fw-semibold text-dark mb-0">
+                                    <i class="fa-solid fa-cloud-arrow-up text-primary me-1"></i> Upload More Gallery
+                                    Images (Add many photos)
+                                </label>
+                                <span id="galleryCountBadge" class="badge bg-primary" style="display: none;">0 images
+                                    queued</span>
+                            </div>
+
+                            <!-- Drag & Drop / Multi-select Area -->
+                            <div id="galleryDropZone"
+                                class="border border-2 border-dashed rounded-3 p-4 text-center bg-light position-relative mb-2"
+                                style="cursor: pointer; transition: all 0.2s ease;">
+                                <input type="file" name="images" id="galleryInput"
+                                    class="position-absolute top-0 start-0 w-100 h-100 opacity-0" multiple
+                                    accept="image/*" style="cursor: pointer;">
+                                <div class="py-2">
+                                    <i class="fa-solid fa-images fa-2x text-primary mb-2"></i>
+                                    <p class="fw-semibold mb-1">Click to choose photos </p>
+                                </div>
+                            </div>
+
+                            <!-- Selected Previews Container with Remove Buttons -->
+                            <div id="galleryPreviews" class="d-flex flex-wrap gap-2 mt-3"></div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                                data-bs-target="#deleteProductModal">
+                                <i class="fa-solid fa-trash me-1"></i> Delete Product
+                            </button>
+
+                            <div class="d-flex gap-2">
+                                <a href="{{ url_for('admin.admin_products') }}" class="btn btn-light px-4">Cancel</a>
+                                <button type="submit" class="btn btn-primary px-4">
+                                    <i class="fa-solid fa-check me-1"></i> Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Individual Image Delete Forms -->
+{% for img in product.images %}
+<form id="deleteImgForm{{ img.id }}" method="POST"
+    action="{{ url_for('admin.admin_product_image_delete', image_id=img.id) }}" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
+{% endfor %}
+
+<!-- Product Delete Modal -->
+<div class="modal fade" id="deleteProductModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-triangle-exclamation me-2"></i>Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-4">
+                Are you sure you want to delete product <strong>"{{ product.name }}"</strong> and its gallery images?
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('admin.admin_product_delete', id=product.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Thumbnail Preview
+    document.getElementById('thumbnailInput').addEventListener('change', function (e) {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                document.getElementById('thumbPreview').src = event.target.result;
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    });
+
+
+
+    // Cumulative Multi-file Gallery Manager
+    const galleryInput = document.getElementById('galleryInput');
+    const galleryPreviews = document.getElementById('galleryPreviews');
+    const galleryCountBadge = document.getElementById('galleryCountBadge');
+    const galleryDropZone = document.getElementById('galleryDropZone');
+    const galleryDT = new DataTransfer();
+
+    function renderGalleryQueue() {
+        galleryPreviews.innerHTML = '';
+        const files = galleryDT.files;
+
+        if (files.length > 0) {
+            galleryCountBadge.style.display = 'inline-block';
+            galleryCountBadge.textContent = `${files.length} photo${files.length > 1 ? 's' : ''} queued`;
+        } else {
+            galleryCountBadge.style.display = 'none';
+        }
+
+        Array.from(files).forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const card = document.createElement('div');
+                card.className = 'position-relative d-inline-block shadow-sm';
+                card.innerHTML = `
+                <img src="${event.target.result}" class="rounded-3 border" style="width: 80px; height: 80px; object-fit: cover;">
+                <button type="button" class="btn btn-danger btn-sm rounded-circle position-absolute top-0 end-0 translate-middle-y shadow" 
+                        style="width: 22px; height: 22px; padding: 0; font-size: 10px; line-height: 1;" 
+                        title="Remove photo" onclick="removeQueuedImage(${index})">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+                galleryPreviews.appendChild(card);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Keep HTML input in sync so form submit sends all files
+        galleryInput.files = galleryDT.files;
+    }
+
+    window.removeQueuedImage = function (indexToRemove) {
+        const newDT = new DataTransfer();
+        Array.from(galleryDT.files).forEach((file, idx) => {
+            if (idx !== indexToRemove) {
+                newDT.items.add(file);
+            }
+        });
+        // Replace items
+        galleryDT.items.clear();
+        Array.from(newDT.files).forEach(f => galleryDT.items.add(f));
+        renderGalleryQueue();
+    };
+
+    function addFilesToGalleryQueue(newFiles) {
+        Array.from(newFiles).forEach(file => {
+            if (file.type.startsWith('image/')) {
+                galleryDT.items.add(file);
+            }
+        });
+        renderGalleryQueue();
+    }
+
+    galleryInput.addEventListener('change', function (e) {
+        if (e.target.files && e.target.files.length > 0) {
+            addFilesToGalleryQueue(e.target.files);
+        }
+    });
+
+    // Drag and drop support
+    ['dragenter', 'dragover'].forEach(eventName => {
+        galleryDropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            galleryDropZone.classList.add('bg-primary-subtle', 'border-primary');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        galleryDropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            galleryDropZone.classList.remove('bg-primary-subtle', 'border-primary');
+        });
+    });
+
+    galleryDropZone.addEventListener('drop', (e) => {
+        if (e.dataTransfer && e.dataTransfer.files) {
+            addFilesToGalleryQueue(e.dataTransfer.files);
+        }
+    });
+</script>
+{% endblock %}

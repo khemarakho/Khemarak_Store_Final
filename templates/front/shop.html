@@ -2,26 +2,50 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
-    <link rel="stylesheet" href="../../static/css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>All Phones & Mobile Devices - Khemarak_Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 {% include "./front/Share/navbar.html" %}
+
 {% block content %}
 <div class="container">
+    <!-- Mobile Brand Chips Filter (Swipeable on touch screens) -->
+    <div class="mobile-brand-chips">
+        <a href="{{ url_for('shop') }}" class="brand-chip {% if not selected_brand %}active{% endif %}">
+            All Brands
+        </a>
+        {% for brand in brands %}
+        <a href="{{ url_for('shop', brand=brand, search=search_query, sort=selected_sort) }}"
+           class="brand-chip {% if selected_brand == brand %}active{% endif %}">
+            {{ brand }}
+        </a>
+        {% endfor %}
+    </div>
+
     <div class="shop-layout">
+        <!-- Desktop Sidebar Filters -->
         <aside class="filters">
-            <h3><i class="fas fa-filter"></i> Filters</h3>
+            <h3><i class="fas fa-filter text-primary"></i> Filters</h3>
             <div class="filter-group">
                 <h4>Brand</h4>
-                <a href="{{ url_for('shop') }}" class="{% if not selected_brand %}active{% endif %}">All</a>
+                <a href="{{ url_for('shop') }}" class="{% if not selected_brand %}active{% endif %}">
+                    <span>All Brands</span>
+                </a>
                 {% for brand in brands %}
-                <a href="{{ url_for('shop', brand=brand, search=search_query, sort=selected_sort) }}" class="{% if selected_brand == brand %}active{% endif %}">{{ brand }}</a>
+                <a href="{{ url_for('shop', brand=brand, search=search_query, sort=selected_sort) }}"
+                   class="{% if selected_brand == brand %}active{% endif %}">
+                    <span>{{ brand }}</span>
+                </a>
                 {% endfor %}
             </div>
             <div class="filter-group">
                 <h4>Sort By</h4>
-                <select class="sort-select" id="sort-select">
+                <select class="sort-select" id="sort-select-desktop">
                     <option value="default" {% if selected_sort == 'default' %}selected{% endif %}>Default</option>
                     <option value="price_low" {% if selected_sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
                     <option value="price_high" {% if selected_sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
@@ -31,25 +55,41 @@
             </div>
         </aside>
 
+        <!-- Products Area -->
         <div class="products-area">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2 style="margin: 0;">All Phones</h2>
-                <span>{{ products|length }} products found</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                    <h2 style="margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--dark);">
+                        {% if selected_brand %}{{ selected_brand }} Phones{% else %}All Smartphones{% endif %}
+                    </h2>
+                    <span style="color: var(--gray); font-size: 0.85rem;">{{ products|length }} product{{ 's' if products|length != 1 else '' }} found</span>
+                </div>
+
+                <!-- Sort on Mobile & Desktop -->
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <label for="sort-select" style="font-size: 0.85rem; color: var(--gray); white-space: nowrap;">Sort:</label>
+                    <select class="sort-select" id="sort-select" style="width: auto; padding: 0.45rem 0.85rem; font-size: 0.85rem;">
+                        <option value="default" {% if selected_sort == 'default' %}selected{% endif %}>Featured</option>
+                        <option value="price_low" {% if selected_sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
+                        <option value="price_high" {% if selected_sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+                        <option value="rating" {% if selected_sort == 'rating' %}selected{% endif %}>Highest Rated</option>
+                        <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Newest</option>
+                    </select>
+                </div>
             </div>
 
             {% if products %}
             <div class="product-grid">
                 {% for product in products %}
                 <div class="product-card">
-                 <a href="{{ url_for('product_detail', product_id=product.id) }}"></a>
                     {% if product.discount > 0 %}
                     <div class="badge discount">-{{ product.discount }}%</div>
                     {% endif %}
                     {% if product.is_new %}
-                    <div class="badge new" style="left: auto; right: 1rem;">New</div>
+                    <div class="badge new" style="left: auto; right: 0.75rem;">New</div>
                     {% endif %}
-                    <a href="{{ url_for('product_detail', product_id=product.id) }}">
-                        <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image">
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-image-wrap">
+                        <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&auto=format&fit=crop&q=80';">
                     </a>
                     <div class="product-info">
                         <div class="product-brand">{{ product.brand }}</div>
@@ -76,32 +116,48 @@
                             <span class="original-price">${{ product.original_price }}</span>
                             {% endif %}
                         </div>
-                        <button class="btn-add" onclick="addToCart({{ product.id }})">
-                            <i class="fas fa-cart-plus"></i> Add to Cart
+                        <button type="button" class="btn-add" onclick="addToCart({{ product.id }})">
+                            <i class="fas fa-cart-plus"></i> <span>Add to Cart</span>
                         </button>
                     </div>
                 </div>
                 {% endfor %}
             </div>
             {% else %}
-            <div style="text-align: center; padding: 4rem; background: white; border-radius: var(--radius);">
-                <i class="fas fa-search" style="font-size: 3rem; color: var(--gray); margin-bottom: 1rem;"></i>
-                <h3>No products found</h3>
-                <p>Try adjusting your filters or search term.</p>
-                <a href="{{ url_for('shop') }}" class="btn-primary">Clear Filters</a>
+            <div style="text-align: center; padding: 3.5rem 1.5rem; background: white; border-radius: 14px; box-shadow: var(--shadow-sm);">
+                <i class="fas fa-search" style="font-size: 2.75rem; color: var(--gray); margin-bottom: 1rem; display: block;"></i>
+                <h3 style="font-size: 1.25rem; font-weight: 700;">No products found</h3>
+                <p style="color: var(--gray); margin-bottom: 1.5rem; font-size: 0.95rem;">Try adjusting your search query or selecting a different brand filter.</p>
+                <a href="{{ url_for('shop') }}" class="btn-primary">
+                    <i class="fas fa-rotate-left"></i> View All Phones
+                </a>
             </div>
             {% endif %}
         </div>
     </div>
 </div>
+
 <script>
-    document.getElementById('sort-select').addEventListener('change', function() {
+    function handleSortChange(val) {
         const url = new URL(window.location.href);
-        url.searchParams.set('sort', this.value);
+        url.searchParams.set('sort', val);
         window.location.href = url.toString();
-    });
+    }
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() {
+            handleSortChange(this.value);
+        });
+    }
+    const sortSelectDesk = document.getElementById('sort-select-desktop');
+    if (sortSelectDesk) {
+        sortSelectDesk.addEventListener('change', function() {
+            handleSortChange(this.value);
+        });
+    }
 </script>
 {% endblock %}
+
 {% include "./front/Share/footer.html" %}
 </body>
 </html>

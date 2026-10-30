@@ -2,15 +2,17 @@
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
 
-    <h2>Add User</h2>
+    <h2 class="fw-bold mb-0">
+        <i class="fa-solid fa-user-plus text-primary me-2"></i>Add User
+    </h2>
 
     <a
         href="{{ url_for('admin.admin_users') }}"
-        class="btn btn-secondary"
+        class="btn btn-outline-secondary rounded-pill px-3"
     >
-        <i class="fa fa-arrow-left"></i>
+        <i class="fa fa-arrow-left me-1"></i>
         Back
     </a>
 
@@ -26,6 +28,7 @@
             method="POST"
             enctype="multipart/form-data"
         >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <!-- ==========================================
                  PROFILE IMAGE

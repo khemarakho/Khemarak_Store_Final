@@ -9,6 +9,7 @@
         name="viewport"
         content="width=device-width, initial-scale=1.0"
     >
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>Admin Login</title>
 
@@ -461,6 +462,7 @@
     action="{{ url_for('admin.admin_login') }}"
     method="POST"
 >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <!-- ==========================================
          NAME

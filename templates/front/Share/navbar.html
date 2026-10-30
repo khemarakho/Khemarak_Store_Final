@@ -1,141 +1,187 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>{% block title %}MobiShop - Premium Mobile Phones{% endblock %}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../../../static/css/style.css">
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-</head>
-<body>
-<header class="header"> <div class="nav-container"> <!-- Logo -->
-    <a href="{{ url_for('index') }}" class="logo"> Khemarak_Store </a>
-    <!-- Mobile Menu Button --> <div class="menu-toggle" onclick="toggleMenu()">
-        <i class="fas fa-bars"></i> </div> <!-- Search -->
-    <form action="{{ url_for('shop') }}" method="GET" class="search-bar">
-        <input type="text" name="search" placeholder="Search phones..." value="{{ request.args.get('search', '') }}">
-        <button type="submit"> <i class="fas fa-search"></i> </button> </form> <!-- Navigation -->
-    <div class="nav-links"> <a href="{{ url_for('index') }}"> <i class="fas fa-home"></i> Home </a>
-        <a href="{{ url_for('shop') }}"> <i class="fas fa-mobile-alt"></i> Shop </a> <a href="{{ url_for('my_orders') }}">
-            <i class="fas fa-shopping-bag"></i> My Orders </a> <a href="{{ url_for('cart') }}" class="cart-icon">
-            <i class="fas fa-shopping-cart"></i> Cart <span class="cart-count"> {{ cart_count() }} </span> </a> {% if is_logged_in() %}
-            <a href="{{ url_for('profile') }}"> <i class="fas fa-user-circle"></i> {{ current_user().name.split()[0] }} </a>
-            <a href="{{ url_for('logout') }}"> <i class="fas fa-sign-out-alt"></i> Logout </a> {% else %} <a href="{{ url_for('login') }}">
-                <i class="fas fa-user"></i> Login </a> {% endif %} </div> </div> </header>
-    <style>.menu-toggle{
-    display:none;
+<!-- ==========================================
+     MOBILE NAVIGATION OVERLAY
+=========================================== -->
+<div class="mobile-nav-overlay" id="mobileNavOverlay" onclick="toggleMenu()"></div>
+
+<!-- ==========================================
+     FRONT STORE HEADER
+=========================================== -->
+<header class="header">
+    <div class="nav-container">
+        <!-- Brand Logo -->
+        <a href="{{ url_for('index') }}" class="logo">
+            <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Khemarak_Store Logo" class="navbar-logo">
+            <span>Khemarak_Store</span>
+        </a>
+
+        <!-- Desktop Search Bar -->
+        <form action="{{ url_for('shop') }}" method="GET" class="search-bar">
+            <input type="text" name="search" placeholder="Search smartphones, brands..." value="{{ request.args.get('search', '') }}">
+            <button type="submit" aria-label="Search"><i class="fas fa-search"></i></button>
+        </form>
+
+        <!-- Desktop & Mobile Drawer Navigation Links -->
+        <nav class="nav-links" id="navLinks">
+            <!-- Mobile Drawer Header (Only visible on mobile screens <= 768px) -->
+            <div class="mobile-nav-header">
+                <a href="{{ url_for('index') }}" class="d-flex align-items-center gap-2 text-decoration-none">
+                    <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Khemarak_Store Logo" class="navbar-logo-sm">
+                    <span class="fw-bold" style="font-size: 1.15rem; color: var(--dark);">Khemarak_Store</span>
+                </a>
+                <button type="button" class="mobile-nav-close" onclick="toggleMenu()" aria-label="Close menu">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Home -->
+            <a href="{{ url_for('index') }}">
+                <i class="fas fa-home"></i> Home
+            </a>
+
+            <!-- Shop -->
+            <a href="{{ url_for('shop') }}">
+                <i class="fas fa-store"></i> Shop
+            </a>
+
+            <!-- My Orders -->
+            <a href="{{ url_for('my_orders') }}">
+                <i class="fas fa-bag-shopping"></i> My Orders
+            </a>
+
+            <!-- Cart -->
+            <a href="{{ url_for('cart') }}" class="cart-icon">
+                <span><i class="fas fa-shopping-cart"></i> Cart</span>
+                <span class="cart-count">{{ cart_count() }}</span>
+            </a>
+
+            {% if is_logged_in() %}
+                <!-- Customer Profile -->
+                <a href="{{ url_for('profile') }}">
+                    <i class="fas fa-user-circle"></i> Profile ({{ current_user().name.split()[0] if current_user() and current_user().name else 'User' }})
+                </a>
+
+                <!-- Logout -->
+                <a href="{{ url_for('logout') }}" style="color: var(--danger);">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            {% else %}
+                <a href="{{ url_for('login') }}">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </a>
+                <a href="{{ url_for('create_user') }}">
+                    <i class="fas fa-user-plus"></i> Register
+                </a>
+            {% endif %}
+        </nav>
+
+        <!-- Mobile Quick Controls (Cart + Hamburger Button) -->
+        <div class="mobile-controls">
+            <a href="{{ url_for('cart') }}" class="mobile-cart-btn" aria-label="View Cart">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count">{{ cart_count() }}</span>
+            </a>
+            <button type="button" class="menu-toggle" onclick="toggleMenu()" aria-label="Open Navigation Menu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Full-Width Search Bar -->
+    <div class="mobile-search-bar">
+        <form action="{{ url_for('shop') }}" method="GET">
+            <input type="text" name="search" placeholder="Search phones, brands..." value="{{ request.args.get('search', '') }}">
+            <button type="submit" aria-label="Search"><i class="fas fa-search"></i></button>
+        </form>
+    </div>
+</header>
+
+<!-- ==========================================
+     GLOBAL TOAST & CART JAVASCRIPT
+=========================================== -->
+<script>
+function toggleMenu() {
+    const navLinks = document.getElementById('navLinks');
+    const overlay = document.getElementById('mobileNavOverlay');
+    if (navLinks) navLinks.classList.toggle('active');
+    if (overlay) overlay.classList.toggle('active');
+    document.body.classList.toggle('nav-open');
 }
 
-@media (max-width:780px){
+// Close mobile menu on resize to desktop
+window.addEventListener('resize', function() {
+    if (window.innerWidth > 768) {
+        const navLinks = document.getElementById('navLinks');
+        const overlay = document.getElementById('mobileNavOverlay');
+        if (navLinks) navLinks.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+        document.body.classList.remove('nav-open');
+    }
+});
 
-    .nav-container{
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        position:relative;
+// Close mobile menu on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const navLinks = document.getElementById('navLinks');
+        const overlay = document.getElementById('mobileNavOverlay');
+        if (navLinks && navLinks.classList.contains('active')) {
+            navLinks.classList.remove('active');
+            if (overlay) overlay.classList.remove('active');
+            document.body.classList.remove('nav-open');
+        }
     }
-    .menu-toggle{
-        display:block;
-        font-size:28px;
-        cursor:pointer;
-        margin-left:auto;
-        padding:10px;
-    }
-
-    .search-bar{
-        display:none;
-    }
-
-    .nav-links{
-        display:none;
-        flex-direction:column;
-        width:100%;
-        background:#fff;
-        position:absolute;
-        top:60px;
-        left:0;
-        padding:15px;
-        box-shadow:0 4px 10px rgba(0,0,0,.1);
-        z-index:999;
-    }
-
-    .nav-links.active{
-        display:flex;
-    }
-}</style>
-<script>
+});
 
 function addToCart(productId, quantity = 1, color = '', storage = '') {
-
     const formData = new FormData();
-
     formData.append('product_id', productId);
     formData.append('quantity', quantity);
     formData.append('color', color);
     formData.append('storage', storage);
 
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const token = csrfMeta ? csrfMeta.getAttribute('content') : '{{ csrf_token() }}';
+    if (token) {
+        formData.append('csrf_token', token);
+    }
+
     fetch('/add-to-cart', {
         method: 'POST',
+        headers: {
+            'X-CSRFToken': token
+        },
         body: formData
     })
     .then(response => response.json())
     .then(data => {
-
         if (data.success) {
-
-            const cartCount =
-                document.querySelector('.cart-count');
-
-            if (cartCount) {
-                cartCount.innerText = data.cart_count;
-            }
-
-            showToast(data.message);
-
+            document.querySelectorAll('.cart-count').forEach(badge => {
+                badge.innerText = data.cart_count;
+            });
+            showToast(data.message || 'Added to cart!');
         } else {
-
-            showToast(data.message, 'error');
-
+            showToast(data.message || 'Could not add to cart', 'error');
         }
-
     })
     .catch(error => {
-
         console.error(error);
-
-        showToast('Error adding to cart', 'error');
-
+        showToast('Error adding product to cart', 'error');
     });
 }
 
 function showToast(message, type = 'success') {
+    const existing = document.querySelector('.toast');
+    if (existing) existing.remove();
 
     const toast = document.createElement('div');
-
     toast.className = 'toast';
-
-    toast.innerText = message;
-
+    toast.innerHTML = (type === 'success' ? '<i class="fas fa-check-circle" style="color: #4ade80;"></i> ' : '<i class="fas fa-circle-exclamation" style="color: #f87171;"></i> ') + message;
     document.body.appendChild(toast);
 
     setTimeout(() => {
-
-        toast.remove();
-
-    }, 3000);
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 2800);
 }
-
-function toggleMenu() {
-
-    document
-        .querySelector('.nav-links')
-        .classList.toggle('active');
-}
-
 </script>
-
-
-    {% block extra_js %}{% endblock %}
-</body>
-</html>

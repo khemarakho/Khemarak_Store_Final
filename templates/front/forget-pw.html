@@ -2,60 +2,74 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>forget password</title>
-    <link rel="stylesheet" href="../../static/css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Forgot Password - Khemarak_Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-{#{% include "./front/Share/navbar.html" %}#}
+{% include "./front/Share/navbar.html" %}
+
 {% block content %}
-<div class="container">
-    <div style="max-width: 500px; margin: 2rem auto;">
-        <div style="background: white; border-radius: var(--radius); padding: 2rem; box-shadow: var(--shadow-lg);">
+<div class="container my-3 my-md-5">
+    <div style="max-width: 480px; width: 100%; margin: 1rem auto;">
+        <div style="background: white; border-radius: var(--radius); padding: clamp(1.25rem, 4vw, 2.5rem); box-shadow: var(--shadow-lg); border: 1px solid var(--border-color);">
             <div style="text-align: center; margin-bottom: 2rem;">
-                <i class="fas fa-key" style="font-size: 3rem; color: var(--primary);"></i>
-                <h2 style="margin-top: 1rem;">Reset Password</h2>
-                <p style="color: var(--gray);">We'll send you a link to reset your password</p>
+                <div style="width: 70px; height: 70px; background: #e0e7ff; color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                    <i class="fas fa-key" style="font-size: 2rem;"></i>
+                </div>
+                <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--dark); margin-bottom: 0.25rem;">Reset Password</h2>
+                <p style="color: var(--gray); font-size: 0.9rem; margin: 0;">We'll help you regain access to your account</p>
             </div>
 
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div style="padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; font-size: 0.9rem; background: {{ '#fee2e2' if category in ['error', 'danger'] else '#dcfce7' }}; color: {{ '#b91c1c' if category in ['error', 'danger'] else '#15803d' }};">
+                            <i class="fas {{ 'fa-exclamation-circle' if category in ['error', 'danger'] else 'fa-check-circle' }} me-1"></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
             <form method="POST" action="{{ url_for('forget_password') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email Address</label>
+                    <label style="display: block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.9rem; color: var(--dark);">Registered Email Address</label>
                     <div style="position: relative;">
                         <i class="fas fa-envelope" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--gray);"></i>
                         <input type="email" name="email" placeholder="Enter your registered email" required
-                               style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1px solid var(--light-gray); border-radius: 0.5rem; font-size: 1rem;">
+                               style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.6rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; font-family: inherit; outline: none; box-sizing: border-box;">
                     </div>
                 </div>
 
-                <button type="submit" style="width: 100%; padding: 0.75rem; background: var(--primary); color: white; border: none; border-radius: 0.5rem; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.3s;">
+                <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary); color: white; border: none; border-radius: var(--radius-pill); font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s; box-shadow: 0 4px 12px rgba(41, 46, 234, 0.25);">
                     Send Reset Link
                 </button>
             </form>
 
             <div style="text-align: center; margin-top: 1.5rem;">
-                <a href="{{ url_for('login') }}" style="color: var(--primary); text-decoration: none;">
-                    <i class="fas fa-arrow-left"></i> Back to Login
+                <a href="{{ url_for('login') }}" style="color: var(--primary); text-decoration: none; font-weight: 600; font-size: 0.9rem;">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Login
                 </a>
             </div>
 
-            <!-- Help Section -->
-            <div style="margin-top: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 0.5rem; border: 1px solid #fde68a;">
-                <p style="font-size: 0.85rem; color: #92400e;">
-                    <i class="fas fa-info-circle"></i> <strong>Demo Mode:</strong><br>
-                    For demo purposes, you'll see the account password displayed (if exists). In a real application, an email would be sent with a password reset link.
-                </p>
-            </div>
-
-            <!-- Password Recovery Tips -->
-            <div style="margin-top: 1.5rem;">
-                <p style="font-size: 0.8rem; color: var(--gray); text-align: center;">
-                    <i class="fas fa-shield-alt"></i> Remember to check your spam folder if you don't see the email.
+            <!-- Help Demo Note -->
+            <div style="margin-top: 1.5rem; padding: 0.85rem 1rem; background: #fef3c7; border-radius: 8px; border: 1px solid #fde68a;">
+                <p style="font-size: 0.82rem; color: #92400e; margin: 0; line-height: 1.4;">
+                    <i class="fas fa-info-circle me-1"></i> <strong>Demo Notice:</strong><br>
+                    In this demo environment, your password hint will be shown on submission.
                 </p>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
-{#{% include "./front/Share/footer.html" %}#}
+
+{% include "./front/Share/footer.html" %}
 </body>
 </html>

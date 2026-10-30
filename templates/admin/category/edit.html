@@ -1,0 +1,130 @@
+{% extends 'admin/master.html' %}
+{% block content %}
+<div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="fa-solid fa-pen-to-square text-primary me-2"></i>Edit Category</h2>
+            <p class="text-muted mb-0">Update category details for <strong>{{ category.name }}</strong></p>
+        </div>
+        <a href="{{ url_for('admin.admin_categories') }}" class="btn btn-outline-secondary rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Categories
+        </a>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for cat_msg, message in messages %}
+                <div class="alert alert-{{ cat_msg if cat_msg != 'error' else 'danger' }} alert-dismissible fade show shadow-sm" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('admin.admin_category_edit', id=category.id) }}" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Category Name -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>
+                            <input type="text" 
+                                   name="name" 
+                                   class="form-control form-control-lg" 
+                                   value="{{ category.name }}" 
+                                   required>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea name="description" 
+                                      class="form-control" 
+                                      rows="3">{{ category.description or '' }}</textarea>
+                        </div>
+
+                        <!-- Current & New Image -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Category Image</label>
+                            <div class="row g-3 align-items-center">
+                                <div class="col-auto">
+                                    <img id="imagePreview" 
+                                         src="{{ get_image_url(category.image, 'categories') }}" 
+                                         alt="{{ category.name }}" 
+                                         class="rounded-3 border shadow-sm" 
+                                         style="width: 100px; height: 100px; object-fit: cover;">
+                                </div>
+                                <div class="col">
+                                    <div class="small text-muted mb-1">Upload a new image to replace the current one:</div>
+                                    <input type="file" 
+                                           name="image" 
+                                           id="imageInput" 
+                                           class="form-control" 
+                                           accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteCatModal">
+                                <i class="fa-solid fa-trash me-1"></i> Delete Category
+                            </button>
+
+                            <div class="d-flex gap-2">
+                                <a href="{{ url_for('admin.admin_categories') }}" class="btn btn-light px-4">Cancel</a>
+                                <button type="submit" class="btn btn-primary px-4">
+                                    <i class="fa-solid fa-check me-1"></i> Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteCatModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-triangle-exclamation me-2"></i>Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-4">
+                Are you sure you want to delete category <strong>"{{ category.name }}"</strong>? All products within this category will also be deleted.
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('admin.admin_category_delete', id=category.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('imageInput').addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            document.getElementById('imagePreview').src = event.target.result;
+        };
+        reader.readAsDataURL(e.target.files[0]);
+    }
+});
+
+
+</script>
+{% endblock %}

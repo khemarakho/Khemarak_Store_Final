@@ -2,102 +2,454 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Detail</title>
-
-    <link rel="stylesheet" href="../../static/css/style.css">
-
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ product.name }} - Khemarak_Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 {% include "./front/Share/navbar.html" %}
+
 {% block content %}
-<div class="container">
-    <div style="background: white; border-radius: var(--radius); padding: 2rem;">
+<div class="container" style="padding-top: 1.5rem; padding-bottom: 3.5rem;">
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb-nav" aria-label="Breadcrumb">
+        <a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Home</a>
+        <span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>
+        <a href="{{ url_for('shop') }}">Shop</a>
+        {% if product.category %}
+        <span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>
+        <a href="{{ url_for('shop') }}?category={{ product.category_id }}">{{ product.category.name }}</a>
+        {% endif %}
+        <span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>
+        <span class="breadcrumb-current">{{ product.name }}</span>
+    </nav>
+
+    <!-- Main Product Card Grid -->
+    <div class="product-detail-card">
         <div class="product-detail-grid">
-            <div>
-                <img src="{{ product.image }}"
-     alt="{{ product.name }}"
-     class="product-detail-image">
-            </div>
-            <div>
-                <div class="product-brand" style="font-size: 1rem;">{{ product.brand }}</div>
-                <h1 style="font-size: 2rem; margin: 0.5rem 0;">{{ product.name }}</h1>
-                <div class="rating" style="margin: 1rem 0;">
-                    <div class="stars">
-                        {% for i in range(5) %}
-                            {% if i < product.rating|int %}
-                                <i class="fas fa-star"></i>
-                            {% elif i < product.rating %}
-                                <i class="fas fa-star-half-alt"></i>
-                            {% else %}
-                                <i class="far fa-star"></i>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                    <span class="reviews">{{ product.reviews }} global ratings</span>
-                </div>
-                <div class="price" style="margin: 1rem 0;">
-                    <span class="current-price" style="font-size: 2rem;">${{ product.price }}</span>
+            <!-- Left Column: Gallery Media -->
+            <div class="product-gallery-wrap">
+                <div class="main-image-container">
+                    <!-- Badges Overlaid -->
                     {% if product.original_price > product.price %}
-                    <span class="original-price" style="font-size: 1.2rem;">${{ product.original_price }}</span>
-                    <span class="discount-percent">Save {{ product.discount }}%</span>
+                    <span class="badge-discount-float">
+                        <i class="fas fa-bolt"></i> Save {{ product.discount }}%
+                    </span>
+                    {% endif %}
+
+                    <span class="badge-authentic-float">
+                        <i class="fas fa-shield-halved"></i> 100% Genuine
+                    </span>
+
+                    <img src="{{ product.image }}"
+                         alt="{{ product.name }}"
+                         id="mainProductImage"
+                         class="product-detail-image"
+                         onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&auto=format&fit=crop&q=80';">
+                </div>
+
+                <!-- Gallery Thumbnails Row -->
+                {% if product.images and product.images|length > 0 %}
+                <div class="gallery-thumbs-row">
+                    <img src="{{ product.image }}"
+                         class="gallery-thumb active"
+                         onclick="changeMainImage(this.src, this)"
+                         alt="Main view">
+                    {% for img in product.images %}
+                        {% if img.name != product.thumbnail %}
+                        <img src="{{ img.image_url }}"
+                             class="gallery-thumb"
+                             onclick="changeMainImage(this.src, this)"
+                             alt="{{ product.name }} angle">
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Right Column: Product Info & Actions -->
+            <div class="product-info-column">
+                <!-- Brand Badge -->
+                <div class="brand-pill">
+                    <i class="fas fa-mobile-screen-button"></i>
+                    {{ product.category.name if product.category else product.brand }}
+                </div>
+
+                <!-- Title -->
+                <h1 class="product-title">{{ product.name }}</h1>
+
+                <!-- Rating and Stock Bar -->
+                <div class="rating-stock-bar">
+                    <div class="rating-cluster">
+                        <div class="stars">
+                            {% for i in range(5) %}
+                                {% if i < product.rating|int %}
+                                    <i class="fas fa-star"></i>
+                                {% elif i < product.rating %}
+                                    <i class="fas fa-star-half-alt"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <span class="score">{{ product.rating }}</span>
+                        <span class="count">({{ product.reviews }} ratings)</span>
+                    </div>
+
+                    <!-- Stock Pill -->
+                    <div>
+                        {% if product.stock > 10 %}
+                            <span class="stock-pill-in">
+                                <i class="fas fa-check-circle"></i> In Stock ({{ product.stock }} units)
+                            </span>
+                        {% elif product.stock > 0 %}
+                            <span class="stock-pill-low">
+                                <i class="fas fa-clock"></i> Only {{ product.stock }} left in stock!
+                            </span>
+                        {% else %}
+                            <span class="stock-pill-out">
+                                <i class="fas fa-circle-xmark"></i> Out of Stock
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Price Box -->
+                <div class="price-display-box">
+                    <span class="current-price">${{ "%.2f"|format(product.price) }}</span>
+                    {% if product.original_price > product.price %}
+                    <span class="original-price">${{ "%.2f"|format(product.original_price) }}</span>
+                    <span class="save-pill">
+                        Save ${{ "%.2f"|format(product.discount_savings) }} ({{ product.discount }}% OFF)
+                    </span>
                     {% endif %}
                 </div>
-                <p style="color: var(--success); margin: 0.5rem 0;">
-                    <i class="fas fa-truck"></i> Free shipping on orders over $500
-                </p>
-                <hr style="margin: 1.5rem 0;">
 
-                <div style="margin: 1.5rem 0;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Color:</label>
-                   <select id="color-select" class="product-select">
+                <!-- Color Selection (Visual Swatch Chips) -->
+                {% set color_map = {
+                    'Black': '#0f172a',
+                    'Titanium': '#78716c',
+                    'Silver': '#cbd5e1',
+                    'Blue': '#2563eb',
+                    'White': '#ffffff',
+                    'Gold': '#f59e0b',
+                    'Green': '#059669',
+                    'Purple': '#7c3aed',
+                    'Red': '#dc2626'
+                } %}
+                <div class="selector-group">
+                    <div class="selector-header">
+                        <span class="selector-title">Color:</span>
+                        <span class="selector-current-value" id="selectedColorName">{{ product.colors[0] if product.colors else 'Standard' }}</span>
+                    </div>
+                    <div class="color-swatches-grid">
                         {% for color in product.colors %}
-                        <option value="{{ color }}">{{ color }}</option>
+                        <div class="color-swatch-chip {{ 'active' if loop.first else '' }}"
+                             onclick="selectColor('{{ color }}', this)"
+                             data-color="{{ color }}">
+                            <span class="color-dot" style="background-color: {{ color_map.get(color, '#64748b') }}; {{ 'border: 1px solid #cbd5e1;' if color == 'White' else '' }}"></span>
+                            <span>{{ color }}</span>
+                        </div>
                         {% endfor %}
-                    </select>
+                    </div>
+                    <input type="hidden" id="color-select" value="{{ product.colors[0] if product.colors else '' }}">
                 </div>
 
-                <div style="margin: 1.5rem 0;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Storage:</label>
-                    <select id="storage-select" class="product-select">
-    {% for storage in product.storage %}
-    <option value="{{ storage }}">{{ storage }}</option>
-    {% endfor %}
-</select>
+                <!-- Storage Capacity (Interactive Segmented Chips) -->
+                <div class="selector-group">
+                    <div class="selector-header">
+                        <span class="selector-title">Storage Capacity:</span>
+                        <span class="selector-current-value" id="selectedStorageName">{{ product.storage[0] if product.storage else 'Standard' }}</span>
+                    </div>
+                    <div class="storage-options-grid">
+                        {% for storage in product.storage %}
+                        <div class="storage-chip {{ 'active' if loop.first else '' }}"
+                             onclick="selectStorage('{{ storage }}', this)"
+                             data-storage="{{ storage }}">
+                            {{ storage }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" id="storage-select" value="{{ product.storage[0] if product.storage else '' }}">
                 </div>
 
-<div style="margin: 1.5rem 0;">
-    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
-        Quantity:
-    </label>
+                <!-- Quantity Stepper -->
+                <div class="selector-group">
+                    <div class="selector-header">
+                        <span class="selector-title">Quantity:</span>
+                    </div>
+                    <div class="quantity-stepper-wrap">
+                        <button type="button" class="stepper-btn" onclick="adjustQuantity(-1)" aria-label="Decrease quantity">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" id="quantity" value="1" min="1" max="{{ product.stock if product.stock > 0 else 1 }}" class="quantity-stepper-input" readonly>
+                        <button type="button" class="stepper-btn" onclick="adjustQuantity(1)" aria-label="Increase quantity">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
 
-    <input
-        type="number"
-        id="quantity"
-        value="1"
-        min="1"
-        class="product-quantity">
-</div>
+                <!-- Action Buttons: Add to Cart + Buy Now + Share -->
+                {% if product.stock > 0 %}
+                <div class="product-actions-bar">
+                    <button type="button" class="btn-add-cart-lg" onclick="addToCartWithOptions()">
+                        <i class="fas fa-cart-shopping"></i> Add to Cart
+                    </button>
+                    <button type="button" class="btn-buy-now-lg" onclick="buyNow()">
+                        <i class="fas fa-bolt"></i> Buy Now
+                    </button>
+                    <button type="button" class="btn-action-icon" onclick="shareProduct()" title="Share Product Link" aria-label="Share product">
+                        <i class="fas fa-share-nodes"></i>
+                    </button>
+                </div>
+                {% else %}
+                <div class="product-actions-bar" style="grid-template-columns: 1fr;">
+                    <button type="button" class="btn-add-cart-lg" style="background: #94a3b8; cursor: not-allowed; box-shadow: none;" disabled>
+                        <i class="fas fa-ban"></i> Currently Out of Stock
+                    </button>
+                </div>
+                {% endif %}
 
-<button
-    class="btn-add product-btn"
-    onclick="addToCartWithOptions()">
-    <i class="fas fa-cart-plus"></i>
-    Add to Cart
-</button>
+                <!-- Trust & Guarantee Badges -->
+                <div class="trust-badges-grid">
+                    <div class="trust-badge-item">
+                        <div class="trust-badge-icon">
+                            <i class="fas fa-truck-fast"></i>
+                        </div>
+                        <div>
+                            <div class="trust-badge-title">Fast Delivery</div>
+                            <div class="trust-badge-desc">1-3 business days nationwide with live tracking</div>
+                        </div>
+                    </div>
+                    <div class="trust-badge-item">
+                        <div class="trust-badge-icon">
+                            <i class="fas fa-shield-check"></i>
+                        </div>
+                        <div>
+                            <div class="trust-badge-title">1 Year Warranty</div>
+                            <div class="trust-badge-desc">100% official brand manufacturer coverage</div>
+                        </div>
+                    </div>
+                    <div class="trust-badge-item">
+                        <div class="trust-badge-icon">
+                            <i class="fas fa-rotate-left"></i>
+                        </div>
+                        <div>
+                            <div class="trust-badge-title">7 Days Replacement</div>
+                            <div class="trust-badge-desc">Hassle-free replacement for factory defects</div>
+                        </div>
+                    </div>
+                    <div class="trust-badge-item">
+                        <div class="trust-badge-icon">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <div>
+                            <div class="trust-badge-title">Safe Payment</div>
+                            <div class="trust-badge-desc">ABA, Wing, Card, or Cash on Delivery</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Tabbed Detailed Information Section -->
+    <div class="product-tabs-container">
+        <div class="tabs-nav-bar" role="tablist">
+            <button type="button" class="tab-nav-btn active" onclick="switchTab('tab-overview', this)">
+                <i class="fas fa-circle-info"></i> Product Overview
+            </button>
+            <button type="button" class="tab-nav-btn" onclick="switchTab('tab-specs', this)">
+                <i class="fas fa-sliders"></i> Specifications
+            </button>
+            <button type="button" class="tab-nav-btn" onclick="switchTab('tab-reviews', this)">
+                <i class="fas fa-star"></i> Reviews ({{ product.reviews }})
+            </button>
+            <button type="button" class="tab-nav-btn" onclick="switchTab('tab-shipping', this)">
+                <i class="fas fa-box-open"></i> Shipping & Returns
+            </button>
+        </div>
+
+        <!-- Tab 1: Overview -->
+        <div id="tab-overview" class="tab-pane-content active">
+            <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--dark); margin-bottom: 0.75rem;">
+                About the {{ product.name }}
+            </h3>
+            <p style="color: #475569; font-size: 0.95rem; line-height: 1.7; margin-bottom: 1.5rem;">
+                {{ product.description if product.description else 'Experience state-of-the-art mobile innovation with the ' + product.name + '. Engineered for demanding users, delivering industry-leading performance, long-lasting battery endurance, and professional-grade camera capabilities.' }}
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                <div style="padding: 1rem; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="font-weight: 700; color: var(--dark); margin-bottom: 0.25rem;">
+                        <i class="fas fa-display text-primary me-2"></i> Brilliant Display
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--gray);">OLED high-refresh screen with ultra-vivid colors and HDR support.</div>
+                </div>
+                <div style="padding: 1rem; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="font-weight: 700; color: var(--dark); margin-bottom: 0.25rem;">
+                        <i class="fas fa-camera text-primary me-2"></i> Pro Photography
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--gray);">Computational photography with night sight and ultra-wide lens.</div>
+                </div>
+                <div style="padding: 1rem; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="font-weight: 700; color: var(--dark); margin-bottom: 0.25rem;">
+                        <i class="fas fa-battery-full text-primary me-2"></i> All-Day Battery
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--gray);">Intelligent power management with ultra-fast charging capabilities.</div>
+                </div>
+                <div style="padding: 1rem; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="font-weight: 700; color: var(--dark); margin-bottom: 0.25rem;">
+                        <i class="fas fa-microchip text-primary me-2"></i> Flagship Processor
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--gray);">Fast response speeds, console-grade gaming, and seamless multitasking.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Technical Specifications -->
+        <div id="tab-specs" class="tab-pane-content">
+            <table class="specs-table">
+                <tbody>
+                    <tr>
+                        <td class="spec-name">Model Name</td>
+                        <td class="spec-val">{{ product.name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-name">Brand / Category</td>
+                        <td class="spec-val">{{ product.category.name if product.category else product.brand }}</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-name">Available Colors</td>
+                        <td class="spec-val">{{ product.colors|join(', ') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-name">Storage Options</td>
+                        <td class="spec-val">{{ product.storage|join(', ') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-name">Network & Connectivity</td>
+                        <td class="spec-val">5G, 4G LTE, Wi-Fi 6E, Bluetooth 5.3, NFC, Dual SIM (eSIM + Nano-SIM)</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-name">Condition</td>
+                        <td class="spec-val">Brand New, 100% Genuine Sealed Factory Box</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-name">Warranty Duration</td>
+                        <td class="spec-val">12 Months Official Manufacturer Warranty</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-name">In The Box</td>
+                        <td class="spec-val">Phone, USB-C Charging Cable, Quick Start Guide, SIM Ejector Pin</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Tab 3: Reviews -->
+        <div id="tab-reviews" class="tab-pane-content">
+            <div style="display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; padding-bottom: 1.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                <div>
+                    <div style="font-size: 3rem; font-weight: 800; color: var(--dark); line-height: 1;">{{ product.rating }}</div>
+                    <div style="color: #fbbf24; margin: 0.35rem 0;">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--gray);">Based on {{ product.reviews }} customer reviews</div>
+                </div>
+                <div style="flex: 1; min-width: 250px;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 0.35rem;">
+                        <span>5 ★</span>
+                        <div style="flex: 1; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                            <div style="width: 88%; height: 100%; background: #fbbf24;"></div>
+                        </div>
+                        <span style="color: var(--gray);">88%</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 0.35rem;">
+                        <span>4 ★</span>
+                        <div style="flex: 1; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                            <div style="width: 10%; height: 100%; background: #fbbf24;"></div>
+                        </div>
+                        <span style="color: var(--gray);">10%</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                        <span>3 ★</span>
+                        <div style="flex: 1; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                            <div style="width: 2%; height: 100%; background: #fbbf24;"></div>
+                        </div>
+                        <span style="color: var(--gray);">2%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Reviews List -->
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <div style="padding: 1rem; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <div style="font-weight: 700; color: var(--dark);">
+                            Sokha M. <span style="color: #10b981; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;"><i class="fas fa-circle-check"></i> Verified Buyer</span>
+                        </div>
+                        <div style="color: #fbbf24; font-size: 0.8rem;">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p style="margin: 0; color: #475569; font-size: 0.9rem; line-height: 1.5;">
+                        "Super fast delivery to Phnom Penh! Phone is 100% original brand new in sealed box. The battery life easily lasts a full day and camera is crisp."
+                    </p>
+                </div>
+
+                <div style="padding: 1rem; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <div style="font-weight: 700; color: var(--dark);">
+                            Dara V. <span style="color: #10b981; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;"><i class="fas fa-circle-check"></i> Verified Buyer</span>
+                        </div>
+                        <div style="color: #fbbf24; font-size: 0.8rem;">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                    <p style="margin: 0; color: #475569; font-size: 0.9rem; line-height: 1.5;">
+                        "Best price among all tech stores in Cambodia. Customer support on Telegram was also very helpful answering my questions about warranty."
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Shipping & Returns -->
+        <div id="tab-shipping" class="tab-pane-content">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                <div>
+                    <h4 style="font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: 0.5rem;">
+                        <i class="fas fa-truck text-primary me-2"></i> Shipping Information
+                    </h4>
+                    <p style="color: #475569; font-size: 0.9rem; line-height: 1.6;">
+                        Orders placed before 3:00 PM are dispatched on the same business day. Delivery within Phnom Penh arrives within 24 hours. For provinces, delivery typically takes 1 to 2 business days via reliable express logistics.
+                    </p>
+                </div>
+                <div>
+                    <h4 style="font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: 0.5rem;">
+                        <i class="fas fa-shield-heart text-primary me-2"></i> 7-Day Return & Exchange
+                    </h4>
+                    <p style="color: #475569; font-size: 0.9rem; line-height: 1.6;">
+                        We want you to love your device. If your smartphone has any factory defects within 7 days of receipt, we will replace it immediately with a brand new unit.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Related Products Section -->
     {% if related %}
-    <h2 class="section-title" style="margin-top: 3rem;">You May Also Like</h2>
+    <h2 class="section-title" style="margin-top: 3.5rem;">
+        <i class="fas fa-thumbs-up text-primary"></i> You May Also Like
+    </h2>
     <div class="product-grid">
         {% for product in related %}
         <div class="product-card">
-            <a href="{{ url_for('product_detail', product_id=product.id) }}">
-                <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image">
+            <a href="{{ url_for('product_detail', product_id=product.id) }}" class="product-image-wrap">
+                <img src="{{ product.image }}" alt="{{ product.name }}" class="product-image" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&auto=format&fit=crop&q=80';">
             </a>
             <div class="product-info">
                 <div class="product-brand">{{ product.brand }}</div>
@@ -105,9 +457,9 @@
                     <div class="product-name">{{ product.name }}</div>
                 </a>
                 <div class="price">
-                    <span class="current-price">${{ product.price }}</span>
+                    <span class="current-price">${{ "%.2f"|format(product.price) }}</span>
                 </div>
-                <button class="btn-add" onclick="addToCart({{ product.id }})">
+                <button type="button" class="btn-add" onclick="addToCart({{ product.id }})">
                     <i class="fas fa-cart-plus"></i> Add to Cart
                 </button>
             </div>
@@ -116,16 +468,118 @@
     </div>
     {% endif %}
 </div>
+
+<!-- JavaScript Interactivity -->
 <script>
-    function addToCartWithOptions() {
-        const productId = {{ product.id }};
-        const quantity = document.getElementById('quantity').value;
-        const color = document.getElementById('color-select').value;
-        const storage = document.getElementById('storage-select').value;
-        addToCart(productId, parseInt(quantity), color, storage);
+function changeMainImage(newSrc, thumbEl) {
+    const mainImg = document.getElementById('mainProductImage');
+    mainImg.style.opacity = '0.3';
+    setTimeout(() => {
+        mainImg.src = newSrc;
+        mainImg.style.opacity = '1';
+    }, 120);
+
+    document.querySelectorAll('.gallery-thumb').forEach(el => el.classList.remove('active'));
+    if (thumbEl) {
+        thumbEl.classList.add('active');
     }
+}
+
+function selectColor(colorName, el) {
+    document.querySelectorAll('.color-swatch-chip').forEach(chip => chip.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('color-select').value = colorName;
+    const label = document.getElementById('selectedColorName');
+    if (label) label.textContent = colorName;
+}
+
+function selectStorage(storageVal, el) {
+    document.querySelectorAll('.storage-chip').forEach(chip => chip.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('storage-select').value = storageVal;
+    const label = document.getElementById('selectedStorageName');
+    if (label) label.textContent = storageVal;
+}
+
+function adjustQuantity(delta) {
+    const input = document.getElementById('quantity');
+    const min = 1;
+    const max = parseInt(input.getAttribute('max')) || 99;
+    let current = parseInt(input.value) || 1;
+    current += delta;
+    if (current < min) current = min;
+    if (current > max) current = max;
+    input.value = current;
+}
+
+function switchTab(tabId, el) {
+    document.querySelectorAll('.tab-nav-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-pane-content').forEach(pane => pane.classList.remove('active'));
+    el.classList.add('active');
+    const target = document.getElementById(tabId);
+    if (target) target.classList.add('active');
+}
+
+function shareProduct() {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(window.location.href);
+        showToast('Product link copied to clipboard!');
+    } else {
+        showToast('Link: ' + window.location.href);
+    }
+}
+
+function addToCartWithOptions() {
+    const productId = {{ product.id }};
+    const quantity = parseInt(document.getElementById('quantity').value) || 1;
+    const colorEl = document.getElementById('color-select');
+    const storageEl = document.getElementById('storage-select');
+    const color = colorEl ? colorEl.value : '';
+    const storage = storageEl ? storageEl.value : '';
+    addToCart(productId, quantity, color, storage);
+}
+
+function buyNow() {
+    const productId = {{ product.id }};
+    const quantity = parseInt(document.getElementById('quantity').value) || 1;
+    const colorEl = document.getElementById('color-select');
+    const storageEl = document.getElementById('storage-select');
+    const color = colorEl ? colorEl.value : '';
+    const storage = storageEl ? storageEl.value : '';
+
+    const formData = new FormData();
+    formData.append('product_id', productId);
+    formData.append('quantity', quantity);
+    formData.append('color', color);
+    formData.append('storage', storage);
+
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const token = csrfMeta ? csrfMeta.getAttribute('content') : '{{ csrf_token() }}';
+    if (token) {
+        formData.append('csrf_token', token);
+    }
+
+    fetch('/add-to-cart', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': token },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = "{{ url_for('checkout') }}";
+        } else {
+            showToast(data.message || 'Error processing request', 'error');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        window.location.href = "{{ url_for('checkout') }}";
+    });
+}
 </script>
 {% endblock %}
+
 {% include "./front/Share/footer.html" %}
 </body>
 </html>

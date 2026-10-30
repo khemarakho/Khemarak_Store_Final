@@ -1,37 +1,588 @@
 {% extends "admin/master.html" %}
 {% block content %}
-<div class="row">
-    <div class="col-lg-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <h2>150</h2>
-                Products
+<div class="container-fluid py-2">
+
+    <!-- ==========================================
+         TOP HEADER & ACTION BAR
+    =========================================== -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="fa-solid fa-gauge-high text-primary me-2"></i>Dashboard
+            </h2>
+            <p class="text-muted mb-0">
+                Welcome back, <strong>{{ session.get('user_name', 'Administrator') }}</strong>! Here is an overview of your store inventory and activity.
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('admin.admin_product_add') }}" class="btn btn-primary rounded-pill px-3 shadow-sm">
+                <i class="fa-solid fa-plus me-1"></i> Add Product
+            </a>
+            <a href="{{ url_for('admin.admin_category_add') }}" class="btn btn-outline-primary rounded-pill px-3">
+                <i class="fa-solid fa-folder-plus me-1"></i> Add Category
+            </a>
+            <a href="{{ url_for('admin.add') }}" class="btn btn-outline-secondary rounded-pill px-3">
+                <i class="fa-solid fa-user-plus me-1"></i> Add User
+            </a>
+            <a href="{{ url_for('index') }}" target="_blank" class="btn btn-light rounded-pill px-3 border shadow-sm">
+                <i class="fa-solid fa-arrow-up-right-from-square me-1 text-primary"></i> Live Store
+            </a>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         OUT OF STOCK / LOW STOCK ALERT (IF ANY)
+    =========================================== -->
+    {% if out_of_stock_count > 0 or low_stock_count > 0 %}
+    <div class="alert alert-warning border-0 shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 44px; height: 44px; font-size: 1.25rem;">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold mb-0 text-dark">Inventory Attention Required</h6>
+                <small class="text-muted">
+                    {% if out_of_stock_count > 0 %}
+                        <span class="badge bg-danger me-1">{{ out_of_stock_count }} item{{ 's' if out_of_stock_count > 1 else '' }} Out of Stock</span>
+                    {% endif %}
+                    {% if low_stock_count > 0 %}
+                        <span class="badge bg-warning text-dark">{{ low_stock_count }} item{{ 's' if low_stock_count > 1 else '' }} Low on Stock (≤ 5 units)</span>
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+        <a href="{{ url_for('admin.admin_products') }}" class="btn btn-sm btn-dark rounded-pill px-3">
+            Review Stock <i class="fa-solid fa-arrow-right ms-1"></i>
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- ==========================================
+         TOP METRICS CARDS
+    =========================================== -->
+    <div class="row g-3 mb-4">
+
+        <!-- Card 1: Customer Orders & Sales -->
+        <div class="col-sm-6 col-xl">
+            <a href="{{ url_for('admin.admin_orders') }}" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-4 h-100 p-3" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: white;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-white-50 text-uppercase small fw-semibold">Customer Orders</div>
+                            <div class="fs-2 fw-bold my-1">{{ total_orders }}</div>
+                            <small class="text-white-50 d-flex flex-wrap gap-1 align-items-center mt-1">
+                                <span class="badge bg-white text-dark">${{ "{:,.2f}".format(total_order_revenue) }}</span>
+                                {% if pending_orders_count > 0 %}
+                                    <span class="badge bg-warning text-dark">{{ pending_orders_count }} Pending</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
+                            <i class="fa-solid fa-cart-shopping fs-4 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Card 2: Total Products -->
+        <div class="col-sm-6 col-xl">
+            <a href="{{ url_for('admin.admin_products') }}" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-4 h-100 p-3" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-white-50 text-uppercase small fw-semibold">Total Products</div>
+                            <div class="fs-2 fw-bold my-1">{{ total_products }}</div>
+                            <small class="text-white-50">
+                                <i class="fa-solid fa-cubes-stacked me-1"></i>{{ total_stock_units }} in stock
+                            </small>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
+                            <i class="fa-solid fa-mobile-screen-button fs-4 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Card 3: Inventory Value -->
+        <div class="col-sm-6 col-xl">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3" style="background: linear-gradient(135deg, #059669, #047857); color: white;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-white-50 text-uppercase small fw-semibold">Inventory Value</div>
+                        <div class="fs-2 fw-bold my-1">${{ "{:,.2f}".format(total_inventory_value) }}</div>
+                        <small class="text-white-50">
+                            <i class="fa-solid fa-chart-line me-1"></i>Estimated resale
+                        </small>
+                    </div>
+                    <div class="bg-white bg-opacity-25 rounded-3 p-3">
+                        <i class="fa-solid fa-sack-dollar fs-4 text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: Categories & Brands -->
+        <div class="col-sm-6 col-xl">
+            <a href="{{ url_for('admin.admin_categories') }}" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-4 h-100 p-3" style="background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-white-50 text-uppercase small fw-semibold">Categories</div>
+                            <div class="fs-2 fw-bold my-1">{{ total_categories }}</div>
+                            <small class="text-white-50">
+                                <i class="fa-solid fa-tags me-1"></i>Active brands
+                            </small>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
+                            <i class="fa-solid fa-layer-group fs-4 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Card 5: Registered Users -->
+        <div class="col-sm-6 col-xl">
+            <a href="{{ url_for('admin.admin_users') }}" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-4 h-100 p-3" style="background: linear-gradient(135deg, #ea580c, #c2410c); color: white;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-white-50 text-uppercase small fw-semibold">Users</div>
+                            <div class="fs-2 fw-bold my-1">{{ total_users }}</div>
+                            <small class="text-white-50">
+                                <span class="badge bg-white text-dark me-1">{{ admin_count }} Admins</span>
+                                <span>{{ regular_user_count }} Customers</span>
+                            </small>
+                        </div>
+                        <div class="bg-white bg-opacity-25 rounded-3 p-3">
+                            <i class="fa-solid fa-users fs-4 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+    </div>
+
+    <!-- ==========================================
+         INTERACTIVE CHARTS ROW
+    =========================================== -->
+    <div class="row g-3 mb-4">
+        <!-- Stock per Category Bar Chart -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-chart-column text-primary me-2"></i>Stock Inventory by Brand
+                        </h6>
+                        <small class="text-muted">Total physical stock units per smartphone brand</small>
+                    </div>
+                    <span class="badge bg-primary-subtle text-primary fw-semibold px-2 py-1">Real-time DB</span>
+                </div>
+                <div style="position: relative; height: 280px;">
+                    <canvas id="categoryStockChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Catalog Share Doughnut Chart -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-chart-pie text-primary me-2"></i>Catalog Share
+                        </h6>
+                        <small class="text-muted">Product count distribution</small>
+                    </div>
+                    <span class="badge bg-info-subtle text-info-emphasis fw-semibold px-2 py-1">{{ total_categories }} Brands</span>
+                </div>
+                <div style="position: relative; height: 280px;" class="d-flex align-items-center justify-content-center">
+                    <canvas id="categoryShareChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-lg-3">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <h2>56</h2>
-                Orders
+
+    <!-- ==========================================
+         RECENT PRODUCTS & RECENT USERS ROW
+    =========================================== -->
+    <div class="row g-3 mb-4">
+
+        <!-- Recent Products Table (Col 8) -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+                <div class="card-header bg-white border-0 pt-3 px-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-box-open text-primary me-2"></i>Recently Added Products
+                        </h6>
+                        <small class="text-muted">Latest smartphone models in your catalog</small>
+                    </div>
+                    <a href="{{ url_for('admin.admin_products') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                        View All ({{ total_products }})
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light text-muted small">
+                                <tr>
+                                    <th class="ps-3">Product</th>
+                                    <th>Brand</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th class="text-end pe-3">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if recent_products %}
+                                    {% for p in recent_products %}
+                                    <tr>
+                                        <td class="ps-3">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <img src="{{ get_image_url(p.thumbnail, 'products') }}" 
+                                                     alt="{{ p.name }}" 
+                                                     class="rounded-3 border shadow-sm"
+                                                     style="width: 44px; height: 44px; object-fit: cover;"
+                                                     onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=100&auto=format&fit=crop&q=80';">
+                                                <div>
+                                                    <a href="{{ url_for('admin.admin_product_edit', id=p.id) }}" class="fw-semibold text-dark text-decoration-none">
+                                                        {{ p.name }}
+                                                    </a>
+                                                    <div class="text-muted small">ID: #{{ p.id }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">
+                                                {{ p.category.name if p.category else 'General' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold text-dark">${{ "%.2f"|format(p.price) }}</span>
+                                            {% if p.cost and p.cost > 0 %}
+                                                <div class="text-muted small">Cost: ${{ "%.2f"|format(p.cost) }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if p.stock > 10 %}
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                                    {{ p.stock }} in stock
+                                                </span>
+                                            {% elif p.stock > 0 %}
+                                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                                                    {{ p.stock }} low stock
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                                    Out of Stock
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end pe-3">
+                                            <a href="{{ url_for('admin.admin_product_edit', id=p.id) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1" title="Edit Product">
+                                                <i class="fa-solid fa-pen-to-square"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">
+                                            No products found in the catalog. <a href="{{ url_for('admin.admin_product_add') }}">Add your first product!</a>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Users (Col 4) -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+                <div class="card-header bg-white border-0 pt-3 px-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-users text-primary me-2"></i>Recent Users
+                        </h6>
+                        <small class="text-muted">Accounts created</small>
+                    </div>
+                    <a href="{{ url_for('admin.admin_users') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        {% if recent_users %}
+                            {% for u in recent_users %}
+                            <li class="list-group-item d-flex align-items-center justify-content-between px-3 py-2 border-0">
+                                <div class="d-flex align-items-center gap-2">
+                                    {% if u.image %}
+                                        <img src="{{ url_for('static', filename='uploads/users/' + u.image) }}" 
+                                             class="rounded-circle border"
+                                             style="width: 38px; height: 38px; object-fit: cover;"
+                                             onerror="this.onerror=null;this.src='{{ url_for('static', filename='image/default.jpg') }}';">
+                                    {% else %}
+                                        <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" 
+                                             style="width: 38px; height: 38px; font-size: 14px;">
+                                            {{ u.name[:2]|upper }}
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <div class="fw-semibold text-dark small mb-0">{{ u.name }}</div>
+                                        <div class="text-muted" style="font-size: 11px;">{{ u.email }}</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    {% if u.role == 'admin' %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle small">Admin</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-muted border small">User</span>
+                                    {% endif %}
+                                </div>
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="list-group-item text-center text-muted py-4 border-0">
+                                No users found in database.
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class="card-footer bg-light border-0 py-2 px-3 text-center">
+                    <a href="{{ url_for('admin.add') }}" class="small fw-semibold text-decoration-none text-primary">
+                        <i class="fa-solid fa-user-plus me-1"></i> Register New User
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ==========================================
+         RECENT CUSTOMER ORDERS ROW
+    =========================================== -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 bg-white">
+                <div class="card-header bg-white border-0 pt-3 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-cart-shopping text-primary me-2"></i>Recent Customer Orders
+                        </h6>
+                        <small class="text-muted">Live incoming customer orders from your store</small>
+                    </div>
+                    <a href="{{ url_for('admin.admin_orders') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                        View All Orders ({{ total_orders }}) <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_orders and recent_orders|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light text-muted small">
+                                <tr>
+                                    <th class="ps-3 py-3">Order ID</th>
+                                    <th class="py-3">Customer</th>
+                                    <th class="py-3">Items</th>
+                                    <th class="py-3">Total</th>
+                                    <th class="py-3">Payment</th>
+                                    <th class="py-3">Status</th>
+                                    <th class="py-3">Date</th>
+                                    <th class="text-end pe-3 py-3">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ord in recent_orders %}
+                                <tr>
+                                    <td class="ps-3 fw-bold text-dark">
+                                        <a href="{{ url_for('admin.admin_orders', q=ord.order_id) }}" class="text-decoration-none">
+                                            #{{ ord.order_id }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold text-dark">{{ ord.customer_name }}</div>
+                                        <div class="text-muted small text-truncate" style="max-width: 170px;">{{ ord.customer_email }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            {{ ord.items|length }} item{% if ord.items|length > 1 %}s{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong class="text-success">${{ "%.2f"|format(ord.total) }}</strong>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ ord.payment_method }}</small>
+                                    </td>
+                                    <td>
+                                        {% if ord.status == 'Completed' %}
+                                            <span class="badge bg-success rounded-pill px-2">Completed</span>
+                                        {% elif ord.status == 'Processing' %}
+                                            <span class="badge bg-primary rounded-pill px-2">Processing</span>
+                                        {% elif ord.status == 'Cancelled' %}
+                                            <span class="badge bg-danger rounded-pill px-2">Cancelled</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark rounded-pill px-2">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-muted small">
+                                        {{ ord.created_at.strftime('%d %b %Y, %I:%M %p') if ord.created_at else 'N/A' }}
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <a href="{{ url_for('admin.admin_orders', q=ord.order_id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1">
+                                            Manage
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fa-solid fa-cart-shopping fs-3 mb-2 opacity-50"></i>
+                        <div class="small">No customer orders placed yet. Orders will appear here automatically.</div>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-lg-3">
-        <div class="card bg-warning">
-            <div class="card-body">
-                <h2>330</h2>
-                Users
+
+    <!-- ==========================================
+         SECURITY & SYSTEM ARCHITECTURE BAR
+    =========================================== -->
+    <div class="card border-0 shadow-sm rounded-4 bg-white p-3 mb-2">
+        <h6 class="fw-bold mb-2 text-dark">
+            <i class="fa-solid fa-shield-halved text-success me-2"></i>System & Security Architecture Status
+        </h6>
+        <div class="row g-2 text-center">
+            <div class="col-sm-6 col-md-3">
+                <div class="p-2 rounded-3 bg-light border">
+                    <div class="text-muted small">Admin Auth Guard</div>
+                    <div class="fw-bold text-success"><i class="fa-solid fa-check-circle me-1"></i>Session Guard Active</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <div class="p-2 rounded-3 bg-light border">
+                    <div class="text-muted small">CSRF Protection</div>
+                    <div class="fw-bold text-success"><i class="fa-solid fa-shield me-1"></i>Flask-WTF Enabled</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <div class="p-2 rounded-3 bg-light border">
+                    <div class="text-muted small">Rate Limiting</div>
+                    <div class="fw-bold text-success"><i class="fa-solid fa-gauge-simple-high me-1"></i>Limiter Enforced</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-3">
+                <div class="p-2 rounded-3 bg-light border">
+                    <div class="text-muted small">Max Image Upload</div>
+                    <div class="fw-bold text-primary"><i class="fa-solid fa-cloud-arrow-up me-1"></i>100 MB Multi-File</div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-lg-3">
-        <div class="card bg-danger text-white">
-            <div class="card-body">
-                <h2>$25,000</h2>
-                Revenue
-            </div>
-        </div>
-    </div>
+
 </div>
+
+<!-- ==========================================
+     CHART.JS SCRIPTS
+=========================================== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const labels = {{ category_labels_json|safe }};
+    const productCounts = {{ category_product_counts_json|safe }};
+    const stockCounts = {{ category_stock_counts_json|safe }};
+
+    // Color Palette
+    const colors = [
+        '#2563eb', '#7c3aed', '#059669', '#ea580c', '#ec4899', 
+        '#0891b2', '#f59e0b', '#4f46e5', '#10b981', '#6366f1'
+    ];
+
+    // 1. Bar Chart: Stock by Brand
+    const ctxBar = document.getElementById('categoryStockChart');
+    if (ctxBar) {
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: labels.length ? labels : ['No Categories'],
+                datasets: [
+                    {
+                        label: 'Stock Quantity',
+                        data: stockCounts.length ? stockCounts : [0],
+                        backgroundColor: '#2563eb',
+                        borderRadius: 8,
+                        barThickness: 24
+                    },
+                    {
+                        label: 'Product Models',
+                        data: productCounts.length ? productCounts : [0],
+                        backgroundColor: '#93c5fd',
+                        borderRadius: 8,
+                        barThickness: 24
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { boxWidth: 12, usePointStyle: true }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f1f5f9' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Doughnut Chart: Catalog Share
+    const ctxDoughnut = document.getElementById('categoryShareChart');
+    if (ctxDoughnut) {
+        new Chart(ctxDoughnut, {
+            type: 'doughnut',
+            data: {
+                labels: labels.length ? labels : ['None'],
+                datasets: [{
+                    data: productCounts.length ? productCounts : [1],
+                    backgroundColor: colors.slice(0, Math.max(labels.length, 1)),
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 10, font: { size: 11 } }
+                    }
+                },
+                cutout: '65%'
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

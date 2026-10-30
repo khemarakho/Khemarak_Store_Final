@@ -1,313 +1,126 @@
 <!-- ==========================================
-     NAVBAR RIGHT AREA
+     ADMIN NAVBAR
 =========================================== -->
+<nav class="navbar d-flex justify-content-between align-items-center">
 
-<div class="d-flex justify-content-end w-100">
-
-    <!-- ==========================================
-         USER DROPDOWN
-    ========================================== -->
-
-    <div class="dropdown">
-
-        <!-- ==========================================
-             USER BUTTON
-        ========================================== -->
-
+    <!-- Toggle Button & Brand Indicator -->
+    <div class="d-flex align-items-center gap-2">
         <button
-            class="btn btn-light dropdown-toggle d-flex align-items-center border-0"
+            class="btn btn-light border shadow-sm d-flex align-items-center justify-content-center"
+            type="button"
+            onclick="toggleAdminSidebar()"
+            aria-label="Toggle navigation menu"
+            style="width: 40px; height: 40px; border-radius: 10px; cursor: pointer;"
+        >
+            <i class="fa-solid fa-bars text-dark fs-5"></i>
+        </button>
+
+        <a href="{{ url_for('admin.admin_dashboard') }}" class="d-lg-none fw-bold text-dark fs-5 mb-0 d-flex align-items-center gap-2 text-decoration-none">
+            <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Khemarak_Store Logo" style="width: 32px; height: 32px; border-radius: 6px !important; object-fit: contain;">
+            <span>Khemarak_Store</span>
+        </a>
+    </div>
+
+    <!-- User Profile Dropdown Area -->
+    <div class="dropdown ms-auto">
+        <button
+            class="btn btn-light dropdown-toggle d-flex align-items-center border-0 py-1 px-2"
             type="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"
         >
-
-            <!-- ==========================================
-                 USER IMAGE
-            ========================================== -->
-
             {% if session.get("user_image") %}
-
                 <img
-                    src="{{ url_for(
-                        'static',
-                        filename='uploads/users/' + session.get('user_image')
-                    ) }}"
+                    src="{{ url_for('static', filename='uploads/users/' + session.get('user_image')) }}"
                     alt="{{ session.get('user_name', 'User') }}"
-                    width="40"
-                    height="40"
+                    width="38"
+                    height="38"
                     class="rounded-circle me-2"
-                    style="
-                        object-fit: cover;
-                        border: 2px solid #ddd;
-                    "
+                    style="object-fit: cover; border: 2px solid #ddd;"
                 >
-
             {% else %}
-
-                <!-- ==========================================
-                     FALLBACK ICON
-                ========================================== -->
-
                 {% if session.get("user_role") == "admin" %}
-
-                    <i
-                        class="fa-solid fa-user-shield fs-3 me-2"
-                    ></i>
-
+                    <i class="fa-solid fa-user-shield fs-4 text-primary me-2"></i>
                 {% else %}
-
-                    <i
-                        class="fa-solid fa-circle-user fs-3 me-2"
-                    ></i>
-
+                    <i class="fa-solid fa-circle-user fs-4 text-secondary me-2"></i>
                 {% endif %}
-
             {% endif %}
 
-
-            <!-- ==========================================
-                 USER NAME
-            ========================================== -->
-
-            <span class="d-none d-md-inline">
-
-                {{ session.get(
-                    "user_name",
-                    "Admin"
-                ) }}
-
+            <span class="d-none d-sm-inline fw-semibold text-dark">
+                {{ session.get("user_name", "Admin") }}
             </span>
-
         </button>
 
-
-        <!-- ==========================================
-             DROPDOWN
-        ========================================== -->
-
-        <ul
-            class="dropdown-menu dropdown-menu-end shadow"
-            style="
-                min-width: 280px;
-                border-radius: 12px;
-            "
-        >
-
+        <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 260px; border-radius: 14px;">
             {% if session.get("user_id") %}
-
-                <!-- ==========================================
-                     USER INFORMATION
-                ========================================== -->
-
                 <li>
-
-                    <div
-                        class="px-4 py-3 text-center"
-                    >
-
-                        <!-- ==========================================
-                             USER IMAGE
-                        ========================================== -->
-
-                        <div class="mb-3">
-
+                    <div class="px-4 py-3 text-center">
+                        <div class="mb-2">
                             {% if session.get("user_image") %}
-
                                 <img
-                                    src="{{ url_for(
-                                        'static',
-                                        filename='uploads/users/' + session.get('user_image')
-                                    ) }}"
-                                    alt="{{ session.get(
-                                        'user_name',
-                                        'User'
-                                    ) }}"
-                                    width="80"
-                                    height="80"
+                                    src="{{ url_for('static', filename='uploads/users/' + session.get('user_image')) }}"
+                                    alt="{{ session.get('user_name', 'User') }}"
+                                    width="70"
+                                    height="70"
                                     class="rounded-circle shadow-sm"
-                                    style="
-                                        object-fit: cover;
-                                        border: 3px solid #eee;
-                                    "
+                                    style="object-fit: cover; border: 3px solid #eee;"
                                 >
-
                             {% else %}
-
                                 {% if session.get("user_role") == "admin" %}
-
-                                    <i
-                                        class="fa-solid fa-user-shield"
-                                        style="
-                                            font-size: 65px;
-                                        "
-                                    ></i>
-
+                                    <i class="fa-solid fa-user-shield text-primary" style="font-size: 55px;"></i>
                                 {% else %}
-
-                                    <i
-                                        class="fa-solid fa-circle-user"
-                                        style="
-                                            font-size: 65px;
-                                        "
-                                    ></i>
-
+                                    <i class="fa-solid fa-circle-user text-secondary" style="font-size: 55px;"></i>
                                 {% endif %}
-
                             {% endif %}
-
                         </div>
 
-
-                        <!-- ==========================================
-                             NAME
-                        ========================================== -->
-
-                        <div
-                            class="fw-bold fs-5"
-                        >
-
-                            {{ session.get(
-                                "user_name",
-                                "Admin"
-                            ) }}
-
+                        <div class="fw-bold fs-6">
+                            {{ session.get("user_name", "Admin") }}
                         </div>
-
-
-                        <!-- ==========================================
-                             EMAIL
-                        ========================================== -->
 
                         {% if session.get("user_email") %}
-
-                            <div
-                                class="text-muted small mt-1"
-                            >
-
-                                <i
-                                    class="fa-solid fa-envelope me-1"
-                                ></i>
-
-                                {{ session.get(
-                                    "user_email"
-                                ) }}
-
+                            <div class="text-muted small mt-1 text-truncate">
+                                <i class="fa-solid fa-envelope me-1"></i>
+                                {{ session.get("user_email") }}
                             </div>
-
                         {% endif %}
 
-
-                        <!-- ==========================================
-                             ROLE
-                        ========================================== -->
-
                         <div class="mt-2">
-
-                            {% if session.get(
-                                "user_role"
-                            ) == "admin" %}
-
-                                <span
-                                    class="badge bg-primary"
-                                >
-
-                                    <i
-                                        class="fa-solid fa-user-shield me-1"
-                                    ></i>
-
-                                    Admin
-
+                            {% if session.get("user_role") == "admin" %}
+                                <span class="badge bg-primary">
+                                    <i class="fa-solid fa-user-shield me-1"></i>Admin
                                 </span>
-
                             {% else %}
-
-                                <span
-                                    class="badge bg-secondary"
-                                >
-
-                                    <i
-                                        class="fa-solid fa-user me-1"
-                                    ></i>
-
-                                    {{ session.get(
-                                        "user_role",
-                                        "User"
-                                    ) }}
-
+                                <span class="badge bg-secondary">
+                                    <i class="fa-solid fa-user me-1"></i>{{ session.get("user_role", "User") }}
                                 </span>
-
                             {% endif %}
-
                         </div>
-
                     </div>
-
                 </li>
 
-
-                <!-- ==========================================
-                     DIVIDER
-                ========================================== -->
+                <li><hr class="dropdown-divider my-1"></li>
 
                 <li>
-
-                    <hr class="dropdown-divider">
-
-                </li>
-
-
-                <!-- ==========================================
-                     SIGN OUT
-                ========================================== -->
-
-                <li>
-
-                    <a
-                        class="dropdown-item text-danger"
-                        href="{{ url_for(
-                            'admin.admin_logout'
-                        ) }}"
-                    >
-
-                        <i
-                            class="fa-solid fa-right-from-bracket me-2"
-                        ></i>
-
-                        Sign Out
-
+                    <a class="dropdown-item py-2" href="{{ url_for('index') }}" target="_blank">
+                        <i class="fa-solid fa-arrow-up-right-from-square me-2 text-primary"></i>View Live Store
                     </a>
-
                 </li>
 
+                <li><hr class="dropdown-divider my-1"></li>
+
+                <li>
+                    <a class="dropdown-item text-danger py-2" href="{{ url_for('admin.admin_logout') }}">
+                        <i class="fa-solid fa-right-from-bracket me-2"></i>Sign Out
+                    </a>
+                </li>
             {% else %}
-
-                <!-- ==========================================
-                     LOGIN
-                ========================================== -->
-
                 <li>
-
-                    <a
-                        class="dropdown-item"
-                        href="{{ url_for(
-                            'admin.admin_login'
-                        ) }}"
-                    >
-
-                        <i
-                            class="fa-solid fa-right-to-bracket me-2"
-                        ></i>
-
-                        Login
-
+                    <a class="dropdown-item py-2" href="{{ url_for('admin.admin_login') }}">
+                        <i class="fa-solid fa-right-to-bracket me-2"></i>Login
                     </a>
-
                 </li>
-
             {% endif %}
-
         </ul>
-
     </div>
-
-</div>
+</nav>

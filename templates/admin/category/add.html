@@ -1,0 +1,102 @@
+{% extends 'admin/master.html' %}
+{% block content %}
+<div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="fa-solid fa-folder-plus text-primary me-2"></i>Add Category</h2>
+            <p class="text-muted mb-0">Create a new product category or brand</p>
+        </div>
+        <a href="{{ url_for('admin.admin_categories') }}" class="btn btn-outline-secondary rounded-pill px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Categories
+        </a>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('admin.admin_category_add') }}" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Category Name -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>
+                            <input type="text" 
+                                   name="name" 
+                                   class="form-control form-control-lg" 
+                                   placeholder="Category Name"
+                                   required 
+                                   autofocus>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea name="description" 
+                                      class="form-control" 
+                                      rows="3" 
+                                      placeholder="Brief summary of products in this category..."></textarea>
+                        </div>
+
+                        <!-- Category Image Upload -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Category Image</label>
+                            <div class="row g-3 align-items-center">
+                                <div class="col-auto">
+                                    <img id="imagePreview" 
+                                         src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=300&auto=format&fit=crop&q=80" 
+                                         alt="Preview" 
+                                         class="rounded-3 border shadow-sm" 
+                                         style="width: 100px; height: 100px; object-fit: cover;">
+                                </div>
+                                <div class="col">
+                                    <label class="form-label small text-muted">Upload category banner photo:</label>
+                                    <input type="file" 
+                                           name="image" 
+                                           id="imageInput" 
+                                           class="form-control" 
+                                           accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('admin.admin_categories') }}" class="btn btn-light px-4">Cancel</a>
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="fa-solid fa-check me-1"></i> Save Category
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('imageInput').addEventListener('change', function(e) {
+    if (e.target.files && e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            document.getElementById('imagePreview').src = event.target.result;
+        };
+        reader.readAsDataURL(e.target.files[0]);
+    }
+});
+</script>
+{% endblock %}

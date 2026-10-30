@@ -2,80 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
-    <link rel="stylesheet" href="../../static/css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>My Profile - Khemarak_Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-
 {% include "./front/Share/navbar.html" %}
 
 {% block content %}
-<div class="container">
-    <h1 class="section-title">My Profile</h1>
+<div class="container my-4">
+    <h1 class="section-title">
+        <i class="fas fa-user-circle text-primary"></i> My Profile
+    </h1>
 
-    <div style="max-width: 800px; margin: 0 auto;">
-        <div style="background: white; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);">
-            <!-- Profile Header -->
-            <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); padding: 2rem; text-align: center; color: white;">
-                <div style="width: 100px; height: 100px; background: white; border-radius: 50%; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-user" style="font-size: 3rem; color: var(--primary);"></i>
+    <div style="max-width: 760px; margin: 0 auto;">
+        <div style="background: white; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border-color);">
+            <!-- Profile Header Banner -->
+            <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); padding: clamp(1.5rem, 4vw, 2.5rem); text-align: center; color: white;">
+                <div style="width: 88px; height: 88px; background: white; border-radius: 50%; margin: 0 auto 0.85rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(0,0,0,0.15);">
+                    <i class="fas fa-user" style="font-size: 2.5rem; color: var(--primary);"></i>
                 </div>
-                <h2>{{ user.name }}</h2>
-                <p>{{ user.email }}</p>
-                <p><small>Member since {{ user.created_at }}</small></p>
+                <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem;">{{ user.name }}</h2>
+                <p style="opacity: 0.9; font-size: 0.95rem; margin-bottom: 0.25rem;">{{ user.email }}</p>
+                <p style="opacity: 0.8; font-size: 0.8rem; margin: 0;"><small>Member since {{ user.created_at }}</small></p>
             </div>
 
-            <!-- Profile Info -->
-            <div style="padding: 2rem;">
-                <h3 style="margin-bottom: 1.5rem;">Account Information</h3>
+            <!-- Profile Info Body -->
+            <div style="padding: clamp(1rem, 3vw, 2rem);">
+                <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--dark);">Account Details</h3>
 
-                <div style="display: grid; gap: 1rem;">
-                    <div style="display: flex; padding: 0.75rem 0; border-bottom: 1px solid var(--light-gray);">
-                        <div style="width: 120px; font-weight: 600; color: var(--gray);">Full Name</div>
-                        <div>{{ user.name }}</div>
+                <div style="display: grid; gap: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.5rem;">
+                        <span style="font-weight: 600; color: var(--gray); font-size: 0.9rem;">Full Name</span>
+                        <span style="font-weight: 600; color: var(--dark);">{{ user.name }}</span>
                     </div>
 
-                    <div style="display: flex; padding: 0.75rem 0; border-bottom: 1px solid var(--light-gray);">
-                        <div style="width: 120px; font-weight: 600; color: var(--gray);">Email Address</div>
-                        <div>{{ user.email }}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.5rem;">
+                        <span style="font-weight: 600; color: var(--gray); font-size: 0.9rem;">Email Address</span>
+                        <span style="font-weight: 500; color: var(--dark);">{{ user.email }}</span>
                     </div>
 
-                    <div style="display: flex; padding: 0.75rem 0; border-bottom: 1px solid var(--light-gray);">
-                        <div style="width: 120px; font-weight: 600; color: var(--gray);">Member Since</div>
-                        <div>{{ user.created_at }}</div>
-                    </div>
-
-                    <div style="display: flex; padding: 0.75rem 0; border-bottom: 1px solid var(--light-gray);">
-                        <div style="width: 120px; font-weight: 600; color: var(--gray);">Account Status</div>
-                        <div><span style="background: var(--success); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem;">Active</span></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.5rem;">
+                        <span style="font-weight: 600; color: var(--gray); font-size: 0.9rem;">Account Status</span>
+                        <span><span style="background: #dcfce7; color: #15803d; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">Active Customer</span></span>
                     </div>
                 </div>
 
-                <div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <a href="#" style="padding: 0.75rem 1.5rem; background: var(--primary); color: white; text-decoration: none; border-radius: 0.5rem; text-align: center;">
-                        <i class="fas fa-edit"></i> Edit Profile
+                <div style="margin-top: 2rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                    <a href="{{ url_for('my_orders') }}" style="flex: 1; min-width: 140px; padding: 0.75rem 1.25rem; background: var(--primary); color: white; text-decoration: none; border-radius: var(--radius-pill); text-align: center; font-weight: 600; font-size: 0.9rem;">
+                        <i class="fas fa-shopping-bag me-1"></i> View Orders
                     </a>
-                    <a href="#" style="padding: 0.75rem 1.5rem; background: var(--gray); color: white; text-decoration: none; border-radius: 0.5rem; text-align: center;">
-                        <i class="fas fa-key"></i> Change Password
+                    <a href="{{ url_for('shop') }}" style="flex: 1; min-width: 140px; padding: 0.75rem 1.25rem; background: var(--light-gray); color: var(--dark); text-decoration: none; border-radius: var(--radius-pill); text-align: center; font-weight: 600; font-size: 0.9rem; border: 1px solid var(--border-color);">
+                        <i class="fas fa-store me-1"></i> Go Shopping
                     </a>
-                    <a href="{{ url_for('logout') }}" style="padding: 0.75rem 1.5rem; background: var(--danger); color: white; text-decoration: none; border-radius: 0.5rem; text-align: center;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
+                    <a href="{{ url_for('logout') }}" style="flex: 1; min-width: 120px; padding: 0.75rem 1.25rem; background: #fee2e2; color: #b91c1c; text-decoration: none; border-radius: var(--radius-pill); text-align: center; font-weight: 600; font-size: 0.9rem;">
+                        <i class="fas fa-sign-out-alt me-1"></i> Logout
                     </a>
                 </div>
             </div>
-        </div>
-
-        <!-- Order History (placeholder) -->
-        <div style="background: white; border-radius: var(--radius); padding: 2rem; margin-top: 2rem; box-shadow: var(--shadow);">
-            <h3 style="margin-bottom: 1rem;">Recent Orders</h3>
-            <p style="color: var(--gray); text-align: center; padding: 2rem;">
-                <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
-                No orders yet. <a href="{{ url_for('shop') }}" style="color: var(--primary);">Start shopping!</a>
-            </p>
         </div>
     </div>
 </div>
 {% endblock %}
+
 {% include "./front/Share/footer.html" %}
 </body>
 </html>
